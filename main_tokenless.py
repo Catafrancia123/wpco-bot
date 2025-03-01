@@ -1,6 +1,6 @@
 import discord, datetime, sys, os, time
-import playsound3 as playsound
-from rich import print as rprint
+# """import playsound3 as playsound"""
+# """from rich import print as rprint"""
 from discord.ext import commands
 from saveloader import *
 
