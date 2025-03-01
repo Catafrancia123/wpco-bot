@@ -22,7 +22,4 @@ venv.bak/
 dmypy.json
 
 # misc
-backup_save.json
-main.py
-wpco_bot_0.2.zip
-test_bot.py
+README.MD
