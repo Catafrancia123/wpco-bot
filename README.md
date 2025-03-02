@@ -18,4 +18,4 @@ What you need to run this is basically just the newest Python version, find [her
 If you want to install these packages fast, run the `setup.py` file.
 
 ## Running
-You can run the `main_tokenless.py` file to run the bot with your own token (i aint sharing tokens to everyone!!!).
+You can run the `main.py` file to run the bot with your own token (i aint sharing tokens to everyone!!!).
