@@ -5,6 +5,7 @@ from discord.ext import commands
 from saveloader import *
 
 # no touchy!!
+logo = discord.File("images/WPCO.png", filename="WPCO.png")
 def clear():
     if sys.platform.startswith(('win32')):
         os.system('cls')
@@ -21,11 +22,25 @@ def is_registered():
             return False
     return commands.check(predicate)
 
+def make_error_embed(error_code : int):
+	time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+	# add more later!!
+	errors = {1: "Command not found/doesn't exist."}
+	embedvar = discord.Embed (
+	    title=f"Error {error_code:02d}",
+	    description=f"{errors[error_code]}",
+	    color = discord.Color.red()
+	)
+	embedvar.set_footer(text=time_format)
+	embedvar.set_thumbnail(url="attachment://WPCO.png")
+
+	return embedvar
+
 """async def bot_timer(unix_target : int = 0):
     if unix_target == 0: 
         pass
     else:
-        unix_now = datetime.datetime.now().timestamp()
+        unix_now = datetime.datetime.now(datetime.timezone.utc).timestamp()
         timer = unix_target - unix_now
         tformat = datetime.datetime.utcfromtimestamp(timer).strftime("%A, %d-%m-%Y at %H:%M:%S UTC")
 
@@ -45,7 +60,6 @@ ranks = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operat
          "SgT" : "Sergeant", "SsT" : "Staff Sergeant", "SfC" : "Sergeant First Class", "OfC" : "Officer", "SnO" : "Senior Officer", "VnO" : "Veteran Officer", "CfO" : "Chief Officer", # Medium ranking
          "2LT" : "2nd Lieutenant", "1LT" : "1st Lieutenant", "CpT" : "Captain", "MaJ" : "Major", "C" : "Colonel", "M" : "Marshal", "MG" : "Major General", "GeN" : "General"} # High ranking
 botver = "1.0"
-logo = discord.File("images/WPCO.png", filename="WPCO.png")
 clear()
 
 # Setup
@@ -127,7 +141,7 @@ async def say(ctx, *, message):
 @bot.hybrid_command(with_app_command = True, brief = "Checks bot ping.")
 @commands.has_any_role(*roles)
 async def ping(ctx):
-    time_format = datetime.datetime.strftime(datetime.datetime.now(), "Today at %I:%M %p UTC.")
+    time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
     ping = bot.latency
     embedvar = discord.Embed(
         title="Pong!",
@@ -179,15 +193,15 @@ async def self_deploy(ctx, status: str):
 
     if status.upper() == "S":
         start = time.time()
-        unix_start = int(datetime.datetime.now().timestamp())
-        deployment_text = datetime.datetime.now().strftime("deployment_%d_%m_%Y")
+        unix_start = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        deployment_text = datetime.datetime.now(datetime.timezone.utc).strftime("deployment_%d_%m_%Y")
         deployment_id += 1
         edit(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", unix_start, "deployment_unix")
         await ctx.reply(f"Started Self-Deployment for {user.name}. Started at: <t:{unix_start}:F>") 
     elif status.upper() == "P":
         if paused_at == 0:
             paused_at = time.time()
-            unix_pause = int(datetime.datetime.now().timestamp())
+            unix_pause = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(paused_at - start - total_paused_time))
             await ctx.reply(f"Paused Self-Deployment for {user.name}. Paused at: <t:{unix_pause}:F>\nElapsed time: {elapsed_time}")
         else:
@@ -198,7 +212,7 @@ async def self_deploy(ctx, status: str):
             paused_duration = time.time() - paused_at
             total_paused_time += paused_duration
             paused_at = 0
-            unix_unpause = int(datetime.datetime.now().timestamp())
+            unix_unpause = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(time.time() - start - total_paused_time))
             await ctx.reply(f"Unpaused Self-Deployment for {user.name}. Unpaused at: <t:{unix_unpause}:F>\nElapsed time: {elapsed_time}")
         else:
@@ -207,7 +221,7 @@ async def self_deploy(ctx, status: str):
         end = time.time()
         try:
             total_time = end - start - total_paused_time
-            unix_end = int(datetime.datetime.now().timestamp())
+            unix_end = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(total_time))
 
             edit(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
@@ -219,8 +233,9 @@ async def self_deploy(ctx, status: str):
 @is_registered()
 @commands.has_any_role(*admin_roles)
 async def add_points(ctx, points: int, to_user: discord.Member, password: str):
+    embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
     user = ctx.author
-    time = datetime.datetime.now()
+    time = datetime.datetime.now(datetime.timezone.utc)
     time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
     if user.id in blacklist_list:
         await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, please contact catamapp/yassin1234.")
@@ -235,35 +250,34 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
 		title=f"Amount of added points for {to_user.name}:",
 		description=f"**{to_user.name}**'s total points: {load('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
 		color=discord.Color.blue(),)
-        embedvar.set_footer(text=time_format)
-        embedvar.set_thumbnail(url="attachment://WPCO.png")
     except KeyError:
-        print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply(f"**{to_user.name}** has not registered yet. (ERR 07)\nPlease tell **{to_user.name}** to run command ``/setup``, then try again.")
-
+        print(f"ERR 07: {time_format} by {user.name}")
+        
+    embedvar.set_footer(text=time_format)
+    embedvar.set_thumbnail(url="attachment://WPCO.png")
     await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Get the number of points a user has/you have.")
 @is_registered()
 @commands.has_any_role(*roles)
 async def points(ctx, user : discord.Member):
-    time = datetime.datetime.now()
-    time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
+    embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
+    time = datetime.datetime.now(datetime.timezone.utc)
+    time_format = time.strftime("Today at %I:%M %p UTC.")
     try:
         embedvar = discord.Embed(
 		title=f"Amount of points for {user.name}:",
 		description=f"Total points: {load('save.json', f'{user.name}_pts', 'points')}",
 		color=discord.Color.blue(),)
-        embedvar.set_footer(text=time_format)
-        embedvar.set_thumbnail(url="attachment://WPCO.png")
     except KeyError:
-        print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply(f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.")
+        print(f"ERR 07: {time_format} by {user.name}")
 
     if user.id in blacklist_list:
         await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
     else: pass
-
+    
+    embedvar.set_footer(text=time_format)
+    embedvar.set_thumbnail(url="attachment://WPCO.png")
     await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)")
@@ -294,7 +308,7 @@ async def setup(ctx, password : str):
 @commands.has_any_role(*admin_roles)
 async def promote(ctx, member : discord.Member, rank : str, password : str):
     user = ctx.author
-    time = datetime.datetime.now()
+    time = datetime.datetime.now(datetime.timezone.utc)
 
     if user.id in blacklist_list:
         await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
@@ -307,7 +321,7 @@ async def promote(ctx, member : discord.Member, rank : str, password : str):
             edit("save.json", f"{member.name}_rank", rank, "rank")      
             await ctx.reply(f"{member.name}'s new rank: {new_rank}. Added by {user.name}")
     except KeyError:
-        print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        print(f"ERR 07: {time_format} by {user.name}")
         await ctx.reply(f"**{member.name}** has not registered yet. (ERR 07)\nPlease tell **{member.name}** to run command ``/setup``, then try again.")
 
 @bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
@@ -373,7 +387,7 @@ async def on_ready():
 
 """@bot.event
 async def on_message(ctx):
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.timezone.utc)
     hour4 = now.hour + 4
     if hour4 == 24: hour4 = 0
     elif hour4 == 25: hour4 = 1
@@ -393,38 +407,35 @@ async def on_message(ctx):
 @bot.event
 async def on_command_error(ctx, error):
     user = ctx.author
-    time = datetime.datetime.now()
+    time = datetime.datetime.now(datetime.timezone.utc)
+    time_format = time.strftime('%A, %d %B %Y, %I:%M %p') 
     if isinstance(error, commands.CommandNotFound):
         # command not found
-        print(f"ERR 01: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply("Command not found/doesn't exist. (ERR 01)")
+        print(f"ERR 01: {time_format} by {user.name}")
+        await ctx.send(file=logo, embed=make_error_embed(1))
     elif isinstance(error, commands.MissingRequiredArgument):
         # no input
-        print(f"ERR 02: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        print(f"ERR 02: {time_format} by {user.name}")
         await ctx.reply(f"An input is missing, please try again. (ERR 02)")
     elif isinstance(error, commands.BadArgument):
         # input not valid/wrong
-        print(f"ERR 03: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        print(f"ERR 03: {time_format} by {user.name}")
         await ctx.reply(f"An input is invalid/unprocessable. (ERR 03)")
     elif isinstance(error, commands.MissingAnyRole):
         # no perms?
-        print(f"ERR 04: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        print(f"ERR 04: {time_format} by {user.name}")
         await ctx.reply("You don't have permission to run this command. (ERR 04)")
     elif isinstance(error, discord.HTTPException):
         # discord.py error
-        print(f"ERR 05: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        print(f"ERR 05: {time_format} by {user.name}")
         await ctx.reply("Server Error. Either from API or Discord. (ERR 05)")
     elif isinstance(error, commands.CheckFailure):
         # not registered
-        print(f"ERR 06: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        print(f"ERR 06: {time_format} by {user.name}")
         await ctx.reply("You must run ``/setup`` before running any commands. Its necessary for the bot to run. (ERR 06)\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.")
-    elif isinstance(error, discord.errors.NotFound):
-        # 404 save key invalid (keyerror)
-        print(f"ERR 08: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply("Save variable inputted was not found/doesn't exist. (ERR 08)")
     else:
         # ummm
-        rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time.strftime('%A, %d %B %Y, %I:%M %p')}")
+        rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
         await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
         
 bot.run(token)
