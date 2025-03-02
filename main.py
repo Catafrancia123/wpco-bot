@@ -38,7 +38,7 @@ def is_registered():
 
 events = ("Deployment", "Training", "Tryout", "Supervision")
 roles = (1288801886706860082, 1207498264644157521, 1297825813567377449) 
-admin_role = (1288801886706860082, 1297825813567377449, 1207383065270419528, 1207383048790745111, 1213416167536857198, 1272839552314118306)
+admin_roles = (1288801886706860082, 1297825813567377449, 1207383065270419528, 1207383048790745111, 1213416167536857198, 1272839552314118306)
 blacklist_list = {}
 deployment_id = 0
 ranks = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operative", "ElO" : "Elite Operative", "SpC" : "Specialist", "LnC" : "Lance Corporal", # Low ranking
@@ -78,7 +78,7 @@ async def wack(ctx):
     await ctx.reply("uhh my head hurts\n- wpco ai bot")
 
 @bot.hybrid_command(with_app_command=True, brief="embed testing.")
-@commands.has_any_role(*admin_role)
+@commands.has_any_role(*admin_roles)
 async def test_embed(ctx):
     if ctx.author.id in blacklist_list:
         await ctx.reply(f"You have been banned from the bot for: {blacklist_list[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
@@ -97,7 +97,7 @@ async def test_embed(ctx):
     await ctx.reply(file=img, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True)
-@commands.has_any_role(*admin_role)
+@commands.has_any_role(*admin_roles)
 async def wake_yassin(ctx):
     if ctx.author.id in blacklist_list:
         await ctx.reply(f"You have been banned from the bot for: {blacklist_list[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
@@ -131,9 +131,8 @@ async def ping(ctx):
     ping = bot.latency
     embedvar = discord.Embed(
         title="Pong!",
-        description=f"Bot latency: {int(ping*10)}ms",
-        color=discord.Color.blue(),
-    )
+        description=f"Bot latency: {int(ping*1000)}ms",
+        color=discord.Color.blue(),)
     embedvar.set_footer(text=time_format)
     embedvar.set_thumbnail(url="attachment://WPCO.png")
 
@@ -141,7 +140,7 @@ async def ping(ctx):
     
 @bot.hybrid_command(with_app_command = True, brief = "shutdowns the bot lmao")
 @is_registered()
-@commands.has_any_role(*admin_role)
+@commands.has_any_role(*admin_roles)
 async def shutdown(ctx, password : str):
     user = ctx.author
     unix = int(datetime.datetime.now().timestamp())
@@ -218,43 +217,56 @@ async def self_deploy(ctx, status: str):
         
 @bot.hybrid_command(with_app_command = True, brief = "Add points to a member.", help = "Add points to a member. (put a negative infront if you want to remove points)")
 @is_registered()
-@commands.has_any_role(1244197639331774556, 1297825813567377449)
-async def add_points(ctx, points : int, to_user : discord.Member, password : str):
+@commands.has_any_role(*admin_roles)
+async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     user = ctx.author
     time = datetime.datetime.now()
-
+    time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
     if user.id in blacklist_list:
-        await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
+        await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, please contact catamapp/yassin1234.")
+    else:
+        pass
+     
+    if password == load("save.json", user.name, "user_data"):
+        edit("save.json", f"{to_user.name}_pts", int(load("save.json", f"{to_user.name}_pts", "points"))+points, "points")
 
     try:
-       load("save.json", f"{to_user.name}_pts", "points")
-       if password == load("save.json", user.name, "user_data"):
-            edit("save.json", f"{to_user.name}_pts", int(load("save.json", f"{to_user.name}_pts", "points"))+points, "points")
-            await ctx.reply(f"**{to_user.name}**'s total points: {load('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**")
+        embedvar = discord.Embed(
+		title=f"Amount of added points for {to_user.name}:",
+		description=f"**{to_user.name}**'s total points: {load('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
+		color=discord.Color.blue(),)
+        embedvar.set_footer(text=time_format)
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
     except KeyError:
         print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply(f"**{to_user.name}** has not registered yet. (ERR 07)\nPlease tell **{to_user.name}** to run command ``$setup``, then try again.")
+        await ctx.reply(f"**{to_user.name}** has not registered yet. (ERR 07)\nPlease tell **{to_user.name}** to run command ``/setup``, then try again.")
+
+    await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Get the number of points a user has/you have.")
 @is_registered()
 @commands.has_any_role(*roles)
 async def points(ctx, user : discord.Member):
     time = datetime.datetime.now()
+    time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
+    try:
+        embedvar = discord.Embed(
+		title=f"Amount of points for {user.name}:",
+		description=f"Total points: {load('save.json', f'{user.name}_pts', 'points')}",
+		color=discord.Color.blue(),)
+        embedvar.set_footer(text=time_format)
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
+    except KeyError:
+        print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
+        await ctx.reply(f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.")
 
     if user.id in blacklist_list:
         await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
     else: pass
 
-    try:
-        load("save.json", f"{user.name}_pts", "points")
-        await ctx.reply(f"**{user.name}**'s total points: {load('save.json', f'{user.name}_pts', 'points')}")
-    except KeyError:
-        print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply(f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.")
+    await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)")
-@is_registered()
 @commands.has_any_role(*roles)
 async def setup(ctx, password : str):
     user = ctx.author
@@ -264,22 +276,22 @@ async def setup(ctx, password : str):
     else: pass
 
     if len(password) < 8:
-        await ctx.reply("You need a minimal of 8 characters for your password.")
+        await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
     elif len(password) >= 8:
         try:
             load("save.json", f"{user.name}", "user_data")
-            await ctx.reply("You have already done setup.")
+            await ctx.reply(":warning: You have already done setup.")
         except KeyError:
             edit("save.json", f"{user.name}", password, "user_data")
             edit("save.json", f"{user.name}_pts", 0, "points")
             edit("save.json", f"{user.name}_rank", "EnO", "rank")
             safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
             with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
-            await ctx.reply("Setup complete. You may use the bot now.")
+            await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
 
 @bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
 @is_registered()
-@commands.has_any_role(*admin_role)
+@commands.has_any_role(*admin_roles)
 async def promote(ctx, member : discord.Member, rank : str, password : str):
     user = ctx.author
     time = datetime.datetime.now()
@@ -296,7 +308,7 @@ async def promote(ctx, member : discord.Member, rank : str, password : str):
             await ctx.reply(f"{member.name}'s new rank: {new_rank}. Added by {user.name}")
     except KeyError:
         print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
-        await ctx.reply(f"**{member.name}** has not registered yet. (ERR 07)\nPlease tell **{member.name}** to run command ``$setup``, then try again.")
+        await ctx.reply(f"**{member.name}** has not registered yet. (ERR 07)\nPlease tell **{member.name}** to run command ``/setup``, then try again.")
 
 @bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
 @commands.has_any_role(*roles)
@@ -310,9 +322,9 @@ async def check_password(ctx, password : str):
     else: pass
 
     if password == load("save.json", user.name, "user_data"):
-        ctx.reply(":white_check_mark: Password is **correct**.")
+        await ctx.reply(":white_check_mark: Password is **correct**.")
     else:
-        ctx.reply(":x: Password is **incorrect**, try again.")
+        await ctx.reply(":x: Password is **incorrect**, try again.")
 
 @bot.hybrid_command(with_app_command = True, brief = "Basic Help Command")
 @commands.has_any_role(*roles)
