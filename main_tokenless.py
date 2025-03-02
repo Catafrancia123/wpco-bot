@@ -228,10 +228,10 @@ async def add_points(ctx, points : int, to_user : discord.Member, password : str
     else: pass
 
     try:
-        load("save.json", f"{to_user.name}_pts", "points")
-        if password == load("save.json", user.name, "user_data"):
+       load("save.json", f"{to_user.name}_pts", "points")
+       if password == load("save.json", user.name, "user_data"):
             edit("save.json", f"{to_user.name}_pts", int(load("save.json", f"{to_user.name}_pts", "points"))+points, "points")
-            await ctx.reply(f"**{to_user.name}**'s total points: {load("save.json", f"{to_user.name}_pts", "points")}\nAdded by **{user.name}**")
+            await ctx.reply(f"**{to_user.name}**'s total points: {load('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**")
     except KeyError:
         print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
         await ctx.reply(f"**{to_user.name}** has not registered yet. (ERR 07)\nPlease tell **{to_user.name}** to run command ``$setup``, then try again.")
@@ -248,7 +248,7 @@ async def points(ctx, user : discord.Member):
 
     try:
         load("save.json", f"{user.name}_pts", "points")
-        await ctx.reply(f"**{user.name}**'s total points: {load("save.json", f"{user.name}_pts", "points")}")
+        await ctx.reply(f"**{user.name}**'s total points: {load('save.json', f'{user.name}_pts', 'points')}")
     except KeyError:
         print(f"ERR 07: {time.strftime('%A, %d %B %Y, %I:%M %p')} by {user.name}")
         await ctx.reply(f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.")
@@ -414,6 +414,5 @@ async def on_command_error(ctx, error):
         # ummm
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time.strftime('%A, %d %B %Y, %I:%M %p')}")
         await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
-
-    
+        
 bot.run(token)
