@@ -25,11 +25,13 @@ def is_registered():
 def make_error_embed(error_code : int):
 	time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
 	# add more later!!
-	errors = {1: "Command not found/doesn't exist."}
+	errors = {1: "Command not found/doesn't exist.",2:"An input is missing, please try again.",3:"An input is invalid/unprocessable.",4:"You don't have permission to run this command.",5:"Server Error. Either from API or Discord.",6:"You must run ``/setup`` before running any commands. Its necessary for the bot to run. (ERR 06)\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.",7:"Bot doesn't have permission to do the following action. Ping catamapp or yassin1234 ASAP.",8:"Command didn't register properly. Ping catamapp or yassin1234 ASAP.",9:"Intents not properly enabled. Ping catamapp or yassin1234 ASAP.",10:"Connection with Discord failed. Please try again later.",11:"Connection with Discord failed. Please try again later."}
+
 	embedvar = discord.Embed (
 	    title=f"Error {error_code:02d}",
 	    description=f"{errors[error_code]}",
-	    color = discord.Color.red()
+	    color = discord.Color.red(),
+        author = "For more information "
 	)
 	embedvar.set_footer(text=time_format)
 	embedvar.set_thumbnail(url="attachment://WPCO.png")
@@ -416,23 +418,43 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.MissingRequiredArgument):
         # no input
         print(f"ERR 02: {time_format} by {user.name}")
-        await ctx.reply(f"An input is missing, please try again. (ERR 02)")
+        await ctx.send(file=logo, embed=make_error_embed(2))
     elif isinstance(error, commands.BadArgument):
         # input not valid/wrong
         print(f"ERR 03: {time_format} by {user.name}")
-        await ctx.reply(f"An input is invalid/unprocessable. (ERR 03)")
+        await ctx.send(file=logo, embed=make_error_embed(3))
     elif isinstance(error, commands.MissingAnyRole):
         # no perms?
         print(f"ERR 04: {time_format} by {user.name}")
-        await ctx.reply("You don't have permission to run this command. (ERR 04)")
+        await ctx.send(file=logo, embed=make_error_embed(4))
     elif isinstance(error, discord.HTTPException):
         # discord.py error
         print(f"ERR 05: {time_format} by {user.name}")
-        await ctx.reply("Server Error. Either from API or Discord. (ERR 05)")
+        await ctx.send(file=logo, embed=make_error_embed(5))
     elif isinstance(error, commands.CheckFailure):
         # not registered
         print(f"ERR 06: {time_format} by {user.name}")
-        await ctx.reply("You must run ``/setup`` before running any commands. Its necessary for the bot to run. (ERR 06)\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.")
+        await ctx.send(file=logo, embed=make_error_embed(6))
+    elif isinstance(error, discord.Forbidden):
+        # bot doesnt have perm to do an action
+        print(f"ERR 07: {time_format} by {user.name}")
+        await ctx.send(file=logo, embed=make_error_embed(7))
+    elif isinstance(error, commands.CommandRegistrationError):
+        # command registration failed
+        print(f"ERR 08: {time_format} by {user.name}")
+        await ctx.send(file=logo, embed=make_error_embed(8))
+    elif isinstance(error, discord.PrivilegedIntentsRequired):
+        # intents not properly enabled
+        print(f"ERR 09: {time_format} by {user.name}")
+        await ctx.send(file=logo, embed=make_error_embed(9))
+    elif isinstance(error, discord.ConnectionClosed):
+        # connection with discord closed
+        print(f"ERR 10: {time_format} by {user.name}")
+        await ctx.send(file=logo, embed=make_error_embed(10))
+    elif isinstance(error, discord.GatewayNotFound):
+        # connection with discord gateaway failed
+        print(f"ERR 11: {time_format} by {user.name}")
+        await ctx.send(file=logo, embed=make_error_embed(11))
     else:
         # ummm
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
