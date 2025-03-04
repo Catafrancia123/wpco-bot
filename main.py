@@ -233,8 +233,8 @@ async def self_deploy(ctx, status: str):
 @is_registered()
 @commands.has_any_role(*admin_roles)
 async def add_points(ctx, points: int, to_user: discord.Member, password: str):
-    embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
     user = ctx.author
+    embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
     if user.id in blacklist_list:
@@ -407,7 +407,7 @@ async def on_message(ctx):
 @bot.event
 async def on_command_error(ctx, error):
     user = ctx.author
-    time = datetime.datetime.now(datetime.timezone.utc)
+    time = datetime.datetime.now()
     time_format = time.strftime('%A, %d %B %Y, %I:%M %p') 
     if isinstance(error, commands.CommandNotFound):
         # command not found
@@ -437,5 +437,6 @@ async def on_command_error(ctx, error):
         # ummm
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
         await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
-        
+
+token = "MTI1NTUwOTQ3MjY4MDYxMTk2Mg.GVkkBd.E1-o9_fu1oSljQXf_4gTXk1BYus8LKs0vb_Dis"
 bot.run(token)
