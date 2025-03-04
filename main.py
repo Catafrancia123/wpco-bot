@@ -416,26 +416,46 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.MissingRequiredArgument):
         # no input
         print(f"ERR 02: {time_format} by {user.name}")
-        await ctx.reply(f"An input is missing, please try again. (ERR 02)")
+        await ctx.send(f"An input is missing, please try again. (ERR 02)")
     elif isinstance(error, commands.BadArgument):
         # input not valid/wrong
         print(f"ERR 03: {time_format} by {user.name}")
-        await ctx.reply(f"An input is invalid/unprocessable. (ERR 03)")
+        await ctx.send(f"An input is invalid/unprocessable. (ERR 03)")
     elif isinstance(error, commands.MissingAnyRole):
         # no perms?
         print(f"ERR 04: {time_format} by {user.name}")
-        await ctx.reply("You don't have permission to run this command. (ERR 04)")
+        await ctx.send("You don't have permission to run this command. (ERR 04)")
     elif isinstance(error, discord.HTTPException):
         # discord.py error
         print(f"ERR 05: {time_format} by {user.name}")
-        await ctx.reply("Server Error. Either from API or Discord. (ERR 05)")
+        await ctx.send("Server Error. Either from API or Discord. (ERR 05)")
     elif isinstance(error, commands.CheckFailure):
         # not registered
         print(f"ERR 06: {time_format} by {user.name}")
-        await ctx.reply("You must run ``/setup`` before running any commands. Its necessary for the bot to run. (ERR 06)\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.")
+        await ctx.send("You must run ``/setup`` before running any commands. Its necessary for the bot to run. (ERR 06)\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.")
+    elif isinstance(error, discord.Forbidden):
+        # bot doesnt have perm to do an action
+        print(f"ERR 07: {time_format} by {user.name}")
+        await ctx.send("Bot doesn't have permission to do the following action. Ping catamapp or yassin1234 ASAP.")
+    elif isinstance(error, commands.CommandRegistrationError):
+        # command registration failed
+        print(f"ERR 08: {time_format} by {user.name}")
+        await ctx.send("Command didn't register properly. Ping catamapp or yassin1234 ASAP.")
+    elif isinstance(error, discord.PrivilegedIntentsRequired):
+        # intents not properly enabled
+        print(f"ERR 09: {time_format} by {user.name}")
+        await ctx.send("Intents not properly enabled. Ping catamapp or yassin1234 ASAP.")
+    elif isinstance(error, discord.ConnectionClosed):
+        # connection with discord closed
+        print(f"ERR 10: {time_format} by {user.name}")
+        await ctx.send("Connection with Discord failed. Please try again later.")
+    elif isinstance(error, discord.GatewayNotFound):
+        # connection with discord gateaway failed
+        print(f"ERR 11: {time_format} by {user.name}")
+        await ctx.send("Connection with Discord failed. Please try again later.")
     else:
         # ummm
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
-        await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
-        
+        await ctx.send(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
+	    
 bot.run(token)
