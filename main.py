@@ -460,4 +460,4 @@ async def on_command_error(ctx, error):
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
         await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
 
-bot.run(your_token)
+bot.run(token)
