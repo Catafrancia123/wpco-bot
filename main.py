@@ -3,8 +3,6 @@ import playsound3 as playsound
 from rich import print as rprint
 from discord.ext import commands
 from saveloader import *
-import pymongo
-
 from pymongo import MongoClient
 
 # connects to mongodb
