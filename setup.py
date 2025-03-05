@@ -8,4 +8,6 @@ subprocess.run([sys.executable, '-m', 'pip', 'install', 'discord.py', '--quiet',
 print("[OK] discord.py has been installed")
 subprocess.run([sys.executable, '-m', 'pip', 'install', 'playsound3', '--quiet', '-U'])
 print("[OK] playsound has been installed")
+subprocess.run([sys.executable, '-m', 'pip', 'install', 'pymongo', '--quiet', '-U'])
+print("[OK] pymongo has been installed")
 print("Setup complete. You can run the program now.")
