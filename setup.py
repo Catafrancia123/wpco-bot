@@ -1,11 +1,19 @@
-import subprocess, sys
+import subprocess, sys, os
+packages = ["discord.py", "rich", "playsound3", "pymango"]
 
-subprocess.run([sys.executable, '-m', 'pip', 'install', 'pip', '--quiet', '-U'])
-print("[OK] pip has been updated")
-subprocess.run([sys.executable, '-m', 'pip', 'install', 'rich', '--quiet', '-U'])
-print("[OK] rich has been installed")
-subprocess.run([sys.executable, '-m', 'pip', 'install', 'discord.py', '--quiet', '-U'])
-print("[OK] discord.py has been installed")
-subprocess.run([sys.executable, '-m', 'pip', 'install', 'playsound3', '--quiet', '-U'])
-print("[OK] playsound has been installed")
-print("Setup complete. You can run the program now.")
+os.system("mkdir pymongo-wpco-bot")
+os.system("cd pymongo-wpco-bot")
+
+if sys.platform.startswith("win32"):
+    os.system("type nul > quickstart.py")
+    os.system("py -m venv venv")
+    os.system(". venv\Scripts\activate")
+elif sys.platform.startswith(('linux', 'cygwin', 'darwin', 'freebsd')):
+    os.system("touch quickstart.py")
+    os.system("python3 -m venv venv")
+    os.system("source venv/bin/activate")
+
+for i in packages:
+    subprocess.run([sys.executable, "-m", "pip", "install", i,  "--quiet", "-U"]) 
+    print(f"[OK] {i} has been installed.")
+
