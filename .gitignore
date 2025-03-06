@@ -1,7 +1,9 @@
-# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files / vim cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.un~
+*.py~
 
 # Environments
 .env
@@ -22,6 +24,7 @@ venv.bak/
 dmypy.json
 
 # misc
-README.MD
+README.md
 test.py
 config.json
+pymongo-wpco-bot/
