@@ -357,7 +357,7 @@ async def help_s(ctx):
             await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
     else: pass
 
-    await ctx.reply("""```â€‹Humor Commands:
+    await ctx.reply("""```Humor Commands:
   wack            ow my head hurts - ai bot??
   wake_yassin    
   say             Make the bot say anything....
