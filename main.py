@@ -392,7 +392,6 @@ async def on_ready():
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
     #await bot_timer(timer_input)
     rprint(f"[[bright_yellow]WARNING[/bright_yellow]] Please ping catamapp/yassin1234 for bot maintenance/unhandled errors.")
-    rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     if pymongo_installed:
         try:
             client = MongoClient(MONGO_URL)
@@ -401,6 +400,7 @@ async def on_ready():
         except Exception as e:
             rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
     playsound.playsound("sounds/beep.wav")
+    rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
 
 """@bot.event
 async def on_message(ctx):
