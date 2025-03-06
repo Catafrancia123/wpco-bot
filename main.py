@@ -398,7 +398,7 @@ async def on_ready():
             client = MongoClient(MONGO_URL)
             client.admin.command('ping')  # Test MongoDB connection
             rprint(f'[[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
-        except NameError:
+        except Exception as e:
             rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
     playsound.playsound("sounds/beep.wav")
 
