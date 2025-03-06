@@ -400,7 +400,7 @@ async def on_ready():
             rprint(f'[[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
         except NameError:
             rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
-        playsound.playsound("sounds/beep.wav")
+    playsound.playsound("sounds/beep.wav")
 
 """@bot.event
 async def on_message(ctx):
