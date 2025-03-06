@@ -3,6 +3,12 @@ import playsound3 as playsound
 from rich import print as rprint
 from discord.ext import commands
 from saveloader import *
+from pymongo import MongoClient
+
+# connects to mongodb
+MONGO_URI = load("config.json", "databaseToken")
+
+
 
 # no touchy!!
 logo = discord.File("images/WPCO.png", filename="WPCO.png")
@@ -351,7 +357,7 @@ async def help_s(ctx):
             await ctx.reply(f"You have been banned from the bot for: {blacklist_list[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
     else: pass
 
-    await ctx.reply("""```​Humor Commands:
+    await ctx.reply("""```Humor Commands:
   wack            ow my head hurts - ai bot??
   wake_yassin    
   say             Make the bot say anything....
@@ -386,6 +392,13 @@ async def on_ready():
     rprint(f"[[bright_yellow]WARNING[/bright_yellow]] Please ping catamapp/yassin1234 for bot maintenance/unhandled errors.")
     rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     playsound.playsound("sounds/beep.wav")
+    try:
+        client = MongoClient(MONGO_URI)
+        client.admin.command('ping')  # Test MongoDB connection
+        rprint(f'[[light_green]COMPLETE[/light_green]] MongoDB Successfully connected!')
+    except Exception as e:
+        rprint(f'[[red]FAILURE[/red]] MongoDB failed to connect.')
+
 
 """@bot.event
 async def on_message(ctx):
