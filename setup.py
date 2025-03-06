@@ -1,5 +1,5 @@
 import subprocess, sys, os
-packages = ["discord.py", "rich", "playsound3", "pymango"]
+packages = ["discord.py", "rich", "playsound3", "pymongo"]
 
 os.system("mkdir pymongo-wpco-bot")
 os.system("cd pymongo-wpco-bot")
