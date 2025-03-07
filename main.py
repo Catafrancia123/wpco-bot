@@ -7,7 +7,6 @@ pymongo_installed = True
 try:
     from pymongo import MongoClient
 except ImportError:
-    rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save.json file.')
     pymongo_installed = False
 
 # no touchy!!
@@ -19,6 +18,18 @@ def clear():
         os.system('cls')
     elif sys.platform.startswith(('linux', 'cygwin', 'darwin', 'freebsd')):
         os.system('clear')
+
+def is_blacklisted():
+    async def predicate_bl(ctx):
+        user = ctx.author
+        role = discord.utils.find(lambda r: r.id == 1303267805411545098, ctx.message.guild.roles)
+
+        if role in user.roles:
+            await ctx.reply(f"You have been banned from the bot. \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
+            return False
+        else:
+            return True
+    return commands.check(predicate_bl)
 
 def is_registered():
     async def predicate(ctx):
@@ -64,7 +75,6 @@ def make_error_embed(error_code : int):
 EVENTS = ("Deployment", "Training", "Tryout", "Supervision")
 ROLES = (1288801886706860082, 1207498264644157521, 1297825813567377449) 
 ADMIN_ROLES = (1288801886706860082, 1297825813567377449, 1207383065270419528, 1207383048790745111, 1213416167536857198, 1272839552314118306)
-BLACKLIST_LIST = {}
 deployment_id = 0
 RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operative", "ElO" : "Elite Operative", "SpC" : "Specialist", "LnC" : "Lance Corporal", # Low ranking
          "SgT" : "Sergeant", "SsT" : "Staff Sergeant", "SfC" : "Sergeant First Class", "OfC" : "Officer", "SnO" : "Senior Officer", "VnO" : "Veteran Officer", "CfO" : "Chief Officer", # Medium ranking
@@ -93,21 +103,15 @@ client = discord.Client(intents=intents)
 
 # Humor Commands
 @bot.hybrid_command(with_app_command = True, brief = "uhh my head hurts")
+@is_blacklisted()
 @commands.has_any_role(*ROLES)
 async def wack(ctx):
-    if ctx.author.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-    
     await ctx.reply("uhh my head hurts\n- wpco ai bot")
 
 @bot.hybrid_command(with_app_command=True, brief="embed testing.")
+@is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def test_embed(ctx):
-    if ctx.author.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-
     embedvar = discord.Embed(
         title="martin is a goober?",
         description="maybe",
@@ -121,30 +125,21 @@ async def test_embed(ctx):
     await ctx.reply(file=img, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True)
+@is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def wake_yassin(ctx):
-    if ctx.author.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-
     await ctx.reply("<@956699005960720474> wake up")
 
 @bot.hybrid_command(with_app_command = True, brief = "martin command")
+@is_blacklisted()
 @commands.has_any_role(*ROLES)
 async def shucks(ctx):
-    if ctx.author.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-
     await ctx.reply("https://cdn.discordapp.com/attachments/1207383289225281606/1328003148224139355/youtube-ugfghba-rBs.mp4?ex=67851ecf&is=6783cd4f&hm=ac276199166ddcee99252fd3d85f4ecbe4c24343104254e003cae82e8ee154ee&    ")
 
 @bot.hybrid_command(with_app_command = True, brief = "Make the bot say anything!")
+@is_blacklisted()
 @commands.has_any_role(*ROLES)
 async def say(ctx, *, message):
-    if ctx.author.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[ctx.author.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-
     await ctx.reply(str(message))
 
 # Functional Commands
@@ -164,14 +159,11 @@ async def ping(ctx):
     
 @bot.hybrid_command(with_app_command = True, brief = "shutdowns the bot lmao")
 @is_registered()
+@is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def shutdown(ctx, password : str):
     user = ctx.author
     unix = int(datetime.datetime.now().timestamp())
-
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
 
     if password == load("save.json", user.name, "user_data"):
         await ctx.reply(f"Bot shutdown initiated by **{user.name}** at: <t:{unix}:F> (EVN 01)")
@@ -241,16 +233,13 @@ async def self_deploy(ctx, status: str):
         
 @bot.hybrid_command(with_app_command = True, brief = "Add points to a member.", help = "Add points to a member. (put a negative infront if you want to remove points)")
 @is_registered()
+@is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     user = ctx.author
     embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, please contact catamapp/yassin1234.")
-    else:
-        pass
      
     if password == load("save.json", user.name, "user_data"):
         edit("save.json", f"{to_user.name}_pts", int(load("save.json", f"{to_user.name}_pts", "points"))+points, "points")
@@ -269,6 +258,7 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
 
 @bot.hybrid_command(with_app_command = True, brief = "Get the number of points a user has/you have.")
 @is_registered()
+@is_blacklisted()
 @commands.has_any_role(*ROLES)
 async def points(ctx, user : discord.Member):
     embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
@@ -281,23 +271,16 @@ async def points(ctx, user : discord.Member):
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
-
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
     
     embedvar.set_footer(text=time_format)
     embedvar.set_thumbnail(url="attachment://WPCO.png")
     await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)")
+@is_blacklisted()
 @commands.has_any_role(*ROLES)
 async def setup(ctx, password : str):
     user = ctx.author
-
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
 
     if len(password) < 8:
         await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
@@ -315,15 +298,12 @@ async def setup(ctx, password : str):
 
 @bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
 @is_registered()
+@is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def promote(ctx, member : discord.Member, rank : str, password : str):
     user = ctx.author
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = time.strftime("Today at %I:%M %p UTC.")
-
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
 
     try:
         load("save.json", f"{member.name}_rank", "rank")
@@ -338,13 +318,10 @@ async def promote(ctx, member : discord.Member, rank : str, password : str):
 @bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
 @commands.has_any_role(*ROLES)
 @is_registered()
+@is_blacklisted()
 async def check_password(ctx, password : str):
     # thx plate
     user = ctx.author
-
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
 
     if password == load("save.json", user.name, "user_data"):
         await ctx.reply(":white_check_mark: Password is **correct**.")
@@ -353,13 +330,8 @@ async def check_password(ctx, password : str):
 
 @bot.hybrid_command(with_app_command = True, brief = "Basic Help Command")
 @commands.has_any_role(*ROLES)
+@is_blacklisted()
 async def help_s(ctx):
-    user = ctx.author
-    
-    if user.id in BLACKLIST_LIST:
-            await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-
     await ctx.reply("""```Humor Commands:
   wack            ow my head hurts - ai bot??
   wake_yassin    
@@ -387,6 +359,8 @@ async def on_ready():
     rprint(f'[[light_green]SUCCESSFUL[/light_green]] Synced slash commands for all servers.')
     rprint(f"[[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
     rprint(f'[[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
+    if not pymongo_installed:
+        rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save.json file.')
     find_save()
     #wait(1)
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
@@ -399,8 +373,8 @@ async def on_ready():
             rprint(f'[[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
         except Exception as e:
             rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
-    playsound.playsound("sounds/beep.wav")
     rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
+    playsound.playsound("sounds/beep.wav")
 
 """@bot.event
 async def on_message(ctx):
