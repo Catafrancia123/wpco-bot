@@ -1,4 +1,5 @@
-import discord, datetime, sys, os, time
+import discord, datetime, sys, os, asyncio
+import discord.gateway
 import playsound3 as playsound
 from rich import print as rprint
 from discord.ext import commands
@@ -11,7 +12,7 @@ try:
 except ImportError:
     pymongo_installed = False
 
-#* no touchy!!
+#! no touchy!!
 if pymongo_installed:
     MONGO_URL = load_json("config.json", "databaseToken")
 logo = discord.File("images/WPCO.png", filename="WPCO.png")
@@ -43,16 +44,26 @@ def is_registered():
             return False
     return commands.check(predicate)
 
-def make_error_embed(error_code : int):
+def make_error_embed(error_code : int = 99, error_msg : str = None):
 	time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
-	# add more later!!
-	errors = {1: "Command not found/doesn't exist.",2:"An input is missing, please try again.",3:"An input is invalid/unprocessable.",4:"You don't have permission to run this command.",5:"Server Error. Either from API or Discord.",6:"You must run ``/setup`` before running any commands. Its necessary for the bot to run. (ERR 06)\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.",7:"Bot doesn't have permission to do the following action. Ping catamapp or yassin1234 ASAP.",8:"Command didn't register properly. Ping catamapp or yassin1234 ASAP.",9:"Intents not properly enabled. Ping catamapp or yassin1234 ASAP.",10:"Connection with Discord failed. Please try again later.",11:"Connection with Discord failed. Please try again later."}
+	#* add more later!!
+	errors = {1: "Command not found/doesn't exist.", 
+              2:"An input is missing, please try again.",
+              3:"An input is invalid/unprocessable.",
+              4:"You don't have permission to run this command.",
+              5:"Server Error. Either from API or Discord.",
+              6:"You must run ``/setup`` before running any commands. Its necessary for the bot to run.\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.",
+              7:"Bot doesn't have permission to do the following action. Ping catamapp or yassin1234 ASAP.",
+              8:"Command didn't register properly. Ping catamapp or yassin1234 ASAP.",
+              9:"Intents not properly enabled. Ping catamapp or yassin1234 ASAP.",
+              10:"Connection with Discord failed. Please try again later.",
+              11:"Connection with Discord failed. Please try again later.", 
+              99:f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error_msg}\n(IF THIS IS A KEY ERROR IGNORE.)"}
 
 	embedvar = discord.Embed (
 	    title=f"Error {error_code:02d}",
 	    description=f"{errors[error_code]}",
-	    color = discord.Color.red(),
-        author = "For more information "
+	    color=discord.Color.red(),
 	)
 	embedvar.set_footer(text=time_format)
 	embedvar.set_thumbnail(url="attachment://WPCO.png")
@@ -84,7 +95,7 @@ RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operat
 BOTVER = "0.3.1"
 clear()
 
-#* Setup
+# Setup
 class Bot(commands.Bot):
     def __init__(self):
         global intents
@@ -364,9 +375,7 @@ async def on_ready():
     rprint(f'[[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
     if not pymongo_installed:
         rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save.json file.')
-        find_save("json")
-    else:
-        find_save("mongodb")
+    find_save()
     #wait(1)
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
     #await bot_timer(timer_input)
@@ -379,7 +388,10 @@ async def on_ready():
         except Exception as e:
             rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
     rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
-    playsound.playsound("sounds/beep.wav")
+    try:
+        await asyncio.to_thread(playsound.playsound, "sounds/beep.wav")
+    except Exception as e:
+        pass
 
 # TODO: fix this
 """@bot.event
@@ -453,6 +465,6 @@ async def on_command_error(ctx, error):
     else:
         #! ummm
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
-        await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
+        await ctx.send(file=logo, embed=make_error_embed(error_msg=error))
 
 bot.run(load_json("config.json", "token"))
