@@ -4,14 +4,16 @@ from rich import print as rprint
 from discord.ext import commands
 from saveloader import *
 pymongo_installed = True
+#* install better comments on vscode for better comments!!
+#? Do YOU have pymongo?
 try:
     from pymongo import MongoClient
 except ImportError:
     pymongo_installed = False
 
-# no touchy!!
+#* no touchy!!
 if pymongo_installed:
-    MONGO_URL = load("config.json", "databaseToken")
+    MONGO_URL = load_json("config.json", "databaseToken")
 logo = discord.File("images/WPCO.png", filename="WPCO.png")
 def clear():
     if sys.platform.startswith(('win32')):
@@ -35,7 +37,7 @@ def is_registered():
     async def predicate(ctx):
         user = ctx.author
         try: 
-            load("save.json", user.name, "user_data")
+            load_json("save.json", user.name, "user_data")
             return True
         except KeyError: 
             return False
@@ -82,13 +84,13 @@ RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operat
 BOTVER = "0.3.1"
 clear()
 
-# Setup
+#* Setup
 class Bot(commands.Bot):
     def __init__(self):
         global intents
         intents = discord.Intents.default()
 
-        # Permissions
+        #* Permissions
         intents.members = True # see members
         intents.message_content = True # see messages
         intents.reactions = True # see reactions
@@ -101,7 +103,7 @@ class Bot(commands.Bot):
 bot = Bot()
 client = discord.Client(intents=intents)
 
-# Humor Commands
+#* Humor Commands
 @bot.hybrid_command(with_app_command = True, brief = "uhh my head hurts")
 @is_blacklisted()
 @commands.has_any_role(*ROLES)
@@ -142,7 +144,7 @@ async def shucks(ctx):
 async def say(ctx, *, message):
     await ctx.reply(str(message))
 
-# Functional Commands
+#* Functional Commands
 @bot.hybrid_command(with_app_command = True, brief = "Checks bot ping.")
 @commands.has_any_role(*ROLES)
 async def ping(ctx):
@@ -165,12 +167,13 @@ async def shutdown(ctx, password : str):
     user = ctx.author
     unix = int(datetime.datetime.now().timestamp())
 
-    if password == load("save.json", user.name, "user_data"):
+    if password == load_json("save.json", user.name, "user_data"):
         await ctx.reply(f"Bot shutdown initiated by **{user.name}** at: <t:{unix}:F> (EVN 01)")
         await bot.close()
     else:
         await ctx.reply("https://tenor.com/view/noperms-gif-27260516")
 
+# TODO: fix this
 """@bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
 @is_registered()
 @commands.has_any_role(*ROLES)
@@ -198,7 +201,7 @@ async def self_deploy(ctx, status: str):
         unix_start = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         deployment_text = datetime.datetime.now(datetime.timezone.utc).strftime("deployment_%d_%m_%Y")
         deployment_id += 1
-        edit(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", unix_start, "deployment_unix")
+        edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", unix_start, "deployment_unix")
         await ctx.reply(f"Started Self-Deployment for {user.name}. Started at: <t:{unix_start}:F>") 
     elif status.upper() == "P":
         if paused_at == 0:
@@ -226,7 +229,7 @@ async def self_deploy(ctx, status: str):
             unix_end = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(total_time))
 
-            edit(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
+            edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
             await ctx.reply(f"Ended Self-Deployment for {user.name}. Ended at: <t:{unix_end}:F>\nTotal deployment time: {elapsed_time}")
         except NameError:
             await ctx.reply("You did not start a deployment yet.")"""
@@ -241,13 +244,13 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
      
-    if password == load("save.json", user.name, "user_data"):
-        edit("save.json", f"{to_user.name}_pts", int(load("save.json", f"{to_user.name}_pts", "points"))+points, "points")
+    if password == load_json("save.json", user.name, "user_data"):
+        edit_json("save.json", f"{to_user.name}_pts", int(load_json("save.json", f"{to_user.name}_pts", "points"))+points, "points")
 
     try:
         embedvar = discord.Embed(
 		title=f"Amount of added points for {to_user.name}:",
-		description=f"**{to_user.name}**'s total points: {load('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
+		description=f"**{to_user.name}**'s total points: {load_json('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -267,7 +270,7 @@ async def points(ctx, user : discord.Member):
     try:
         embedvar = discord.Embed(
 		title=f"Amount of points for {user.name}:",
-		description=f"Total points: {load('save.json', f'{user.name}_pts', 'points')}",
+		description=f"Total points: {load_json('save.json', f'{user.name}_pts', 'points')}",
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -286,12 +289,12 @@ async def setup(ctx, password : str):
         await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
     elif len(password) >= 8:
         try:
-            load("save.json", f"{user.name}", "user_data")
+            load_json("save.json", f"{user.name}", "user_data")
             await ctx.reply(":warning: You have already done setup.")
         except KeyError:
-            edit("save.json", f"{user.name}", password, "user_data")
-            edit("save.json", f"{user.name}_pts", 0, "points")
-            edit("save.json", f"{user.name}_rank", "EnO", "rank")
+            edit_json("save.json", f"{user.name}", password, "user_data")
+            edit_json("save.json", f"{user.name}_pts", 0, "points")
+            edit_json("save.json", f"{user.name}_rank", "EnO", "rank")
             safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
             with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
             await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
@@ -306,10 +309,10 @@ async def promote(ctx, member : discord.Member, rank : str, password : str):
     time_format = time.strftime("Today at %I:%M %p UTC.")
 
     try:
-        load("save.json", f"{member.name}_rank", "rank")
-        if password == load("save.json", user.name, "user_data") and load("save.json", f"{user.name}_rank", "rank") != rank:
+        load_json("save.json", f"{member.name}_rank", "rank")
+        if password == load_json("save.json", user.name, "user_data") and load_json("save.json", f"{user.name}_rank", "rank") != rank:
             new_rank = RANKS[rank]
-            edit("save.json", f"{member.name}_rank", rank, "rank")      
+            edit_json("save.json", f"{member.name}_rank", rank, "rank")      
             await ctx.reply(f"{member.name}'s new rank: {new_rank}. Added by {user.name}")
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -320,10 +323,10 @@ async def promote(ctx, member : discord.Member, rank : str, password : str):
 @is_registered()
 @is_blacklisted()
 async def check_password(ctx, password : str):
-    # thx plate
+    #* thx plate
     user = ctx.author
 
-    if password == load("save.json", user.name, "user_data"):
+    if password == load_json("save.json", user.name, "user_data"):
         await ctx.reply(":white_check_mark: Password is **correct**.")
     else:
         await ctx.reply(":x: Password is **incorrect**, try again.")
@@ -352,7 +355,7 @@ async def help_s(ctx):
 Type /help_s command for more info on a command. (coming soon)
 You can also type /help_s category for more info on a category. (coming soon)```""")
 
-# Events
+#* Events
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -361,7 +364,9 @@ async def on_ready():
     rprint(f'[[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
     if not pymongo_installed:
         rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save.json file.')
-    find_save()
+        find_save("json")
+    else:
+        find_save("mongodb")
     #wait(1)
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
     #await bot_timer(timer_input)
@@ -376,6 +381,7 @@ async def on_ready():
     rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     playsound.playsound("sounds/beep.wav")
 
+# TODO: fix this
 """@bot.event
 async def on_message(ctx):
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -387,7 +393,7 @@ async def on_message(ctx):
     except NameError: print("name_error")
     unix = int(datetime.datetime(now.year, now.month, now.day, hour4, now.minute, now.second).timestamp())
 
-    try: data = load(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", "deployment_unix")
+    try: data = load_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", "deployment_unix")
     except KeyError: print("key_error")
 
     try:
@@ -401,52 +407,52 @@ async def on_command_error(ctx, error):
     time = datetime.datetime.now()
     time_format = time.strftime('%A, %d %B %Y, %I:%M %p') 
     if isinstance(error, commands.CommandNotFound):
-        # command not found
+        #! command not found
         print(f"ERR 01: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(1))
     elif isinstance(error, commands.MissingRequiredArgument):
-        # no input
+        #! no input
         print(f"ERR 02: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(2))
     elif isinstance(error, commands.BadArgument):
-        # input not valid/wrong
+        #! input not valid/wrong
         print(f"ERR 03: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(3))
     elif isinstance(error, commands.MissingAnyRole):
-        # no perms?
+        #! no perms?
         print(f"ERR 04: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(4))
     elif isinstance(error, discord.HTTPException):
-        # discord.py error
+        #! discord.py error
         print(f"ERR 05: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(5))
     elif isinstance(error, commands.CheckFailure):
-        # not registered
+        #! not registered
         print(f"ERR 06: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(6))
     elif isinstance(error, discord.Forbidden):
-        # bot doesnt have perm to do an action
+        #! bot doesnt have perm to do an action
         print(f"ERR 07: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(7))
     elif isinstance(error, commands.CommandRegistrationError):
-        # command registration failed
+        #! command registration failed
         print(f"ERR 08: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(8))
     elif isinstance(error, discord.PrivilegedIntentsRequired):
-        # intents not properly enabled
+        #! intents not properly enabled
         print(f"ERR 09: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(9))
     elif isinstance(error, discord.ConnectionClosed):
-        # connection with discord closed
+        #! connection with discord closed
         print(f"ERR 10: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(10))
     elif isinstance(error, discord.GatewayNotFound):
-        # connection with discord gateaway failed
+        #! connection with discord gateaway failed
         print(f"ERR 11: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(11))
     else:
-        # ummm
+        #! ummm
         rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
         await ctx.reply(f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error}\n(IF THIS IS A KEY ERROR IGNORE.)")
 
-bot.run(load("config.json", "token"))
+bot.run(load_json("config.json", "token"))
