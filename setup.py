@@ -12,17 +12,12 @@ clear()
 while True:
     database_pkgs_confirm = str(input("Would you like to install pymongo (MongoDB)? (y/n)\n> "))
     if database_pkgs_confirm.lower() == "y":
-        os.system("mkdir pymongo-wpco-bot")
-        os.system("cd pymongo-wpco-bot")
+        os.makedirs("pymongo-quickstart", exist_ok=True)
 
         if sys.platform.startswith("win32"):
-            os.system("type nul > quickstart.py")
-            os.system("py -m venv venv")
-            os.system(". venv\Scripts\activate")
+            os.system("type nul > pymongo-quickstart\\quickstart.py")
         elif sys.platform.startswith(('linux', 'cygwin', 'darwin', 'freebsd')):
-            os.system("touch quickstart.py")
-            os.system("python3 -m venv venv")
-            os.system("source venv/bin/activate")
+            os.system("touch pymongo-quickstart/quickstart.py")
         break
     elif database_pkgs_confirm.lower() == "n":
         packages.pop(packages.index("pymongo"))
@@ -30,6 +25,8 @@ while True:
     else:
         print("Invalid Input.\n")
 
+print(end=None)
+subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"])
 counter = 1
 for i in packages:
     subprocess.run([sys.executable, "-m", "pip", "install", i,  "--quiet", "-U"])

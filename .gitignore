@@ -27,4 +27,5 @@ dmypy.json
 README.md
 test.py
 config.json
-pymongo-wpco-bot/
+test.json
+pymongo-quickstart/
