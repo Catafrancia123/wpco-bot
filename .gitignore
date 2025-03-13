@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.un~
 *.py~
+*.json~
 
 # Environments
 .env

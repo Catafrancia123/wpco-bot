@@ -4,8 +4,9 @@ import playsound3 as playsound
 from rich import print as rprint
 from discord.ext import commands
 from saveloader import *
-pymongo_installed = True
 #* install better comments on vscode for better comments!!
+
+pymongo_installed = True
 #? Do YOU have pymongo?
 try:
     from pymongo import MongoClient
@@ -16,6 +17,16 @@ except ImportError:
 if pymongo_installed:
     MONGO_URL = load_json("config.json", "databaseToken")
 logo = discord.File("images/WPCO.png", filename="WPCO.png")
+
+#* pyinstaller hotfix
+def resource_path(relative_path):
+    try: 
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 def clear():
     if sys.platform.startswith(('win32')):
         os.system('cls')
@@ -25,7 +36,8 @@ def clear():
 def is_blacklisted():
     async def predicate_bl(ctx):
         user = ctx.author
-        role = discord.utils.find(lambda r: r.id == 1303267805411545098, ctx.message.guild.roles)
+        BLACKLIST_ROLES = (1303267805411545098, 1349692227223289896)
+        role = discord.utils.find(lambda r: r.id in BLACKLIST_ROLES, ctx.message.guild.roles)
 
         if role in user.roles:
             await ctx.reply(f"You have been banned from the bot. \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
@@ -38,7 +50,7 @@ def is_registered():
     async def predicate(ctx):
         user = ctx.author
         try: 
-            load_json("save.json", user.name, "user_data")
+            load_json("save_wpco.json", user.name, "user_data")
             return True
         except KeyError: 
             return False
@@ -58,7 +70,7 @@ def make_error_embed(error_code : int = 99, error_msg : str = None):
               9:"Intents not properly enabled. Ping catamapp or yassin1234 ASAP.",
               10:"Connection with Discord failed. Please try again later.",
               11:"Connection with Discord failed. Please try again later.", 
-              99:f"Unidentified Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error_msg}\n(IF THIS IS A KEY ERROR IGNORE.)"}
+              99:f"Unknown Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error_msg}\n(IF THIS IS A KEY ERROR IGNORE.)"}
 
 	embedvar = discord.Embed (
 	    title=f"Error {error_code:02d}",
@@ -86,13 +98,15 @@ def make_error_embed(error_code : int = 99, error_msg : str = None):
             print("[[bright_red]ERROR[/bright_red]] The target shutdown time has already passed.")"""
 
 EVENTS = ("Deployment", "Training", "Tryout", "Supervision")
-ROLES = (1288801886706860082, 1207498264644157521, 1297825813567377449) 
-ADMIN_ROLES = (1288801886706860082, 1297825813567377449, 1207383065270419528, 1207383048790745111, 1213416167536857198, 1272839552314118306)
+ROLES = (1288801886706860082, 1207498264644157521, 1297825813567377449, 989415158549995540) 
+ADMIN_ROLES = (1288801886706860082, 1297825813567377449, 1207383065270419528, 1207383048790745111, 1213416167536857198, 1272839552314118306, 1179524589592784996)
+ADMIN_ROLES = (1288801886706860082, 1272839552314118306, 1345327248265449502, 1207383065270419528, 1224066316990812272, 1179524589592784996, 1349692227223289896, 1244197639331774556)
 deployment_id = 0
 RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operative", "ElO" : "Elite Operative", "SpC" : "Specialist", "LnC" : "Lance Corporal", # Low ranking
          "SgT" : "Sergeant", "SsT" : "Staff Sergeant", "SfC" : "Sergeant First Class", "OfC" : "Officer", "SnO" : "Senior Officer", "VnO" : "Veteran Officer", "CfO" : "Chief Officer", # Medium ranking
          "2LT" : "2nd Lieutenant", "1LT" : "1st Lieutenant", "CpT" : "Captain", "MaJ" : "Major", "C" : "Colonel", "M" : "Marshal", "MG" : "Major General", "GeN" : "General"} # High ranking
-BOTVER = "0.3.1"
+BOTVER = "0.3.2" 
+#* GOC using this bot and removal of rank promotion (they're manual!!). still will save the ranks const file for future use.
 clear()
 
 # Setup
@@ -178,7 +192,7 @@ async def shutdown(ctx, password : str):
     user = ctx.author
     unix = int(datetime.datetime.now().timestamp())
 
-    if password == load_json("save.json", user.name, "user_data"):
+    if password == load_json("save_wpco.json", user.name, "user_data"):
         await ctx.reply(f"Bot shutdown initiated by **{user.name}** at: <t:{unix}:F> (EVN 01)")
         await bot.close()
     else:
@@ -255,13 +269,13 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
      
-    if password == load_json("save.json", user.name, "user_data"):
-        edit_json("save.json", f"{to_user.name}_pts", int(load_json("save.json", f"{to_user.name}_pts", "points"))+points, "points")
+    if password == load_json("save_wpco.json", user.name, "user_data"):
+        edit_json("save_wpco.json", f"{to_user.name}_pts", int(load_json("save_wpco.json", f"{to_user.name}_pts", "points"))+points, "points")
 
     try:
         embedvar = discord.Embed(
 		title=f"Amount of added points for {to_user.name}:",
-		description=f"**{to_user.name}**'s total points: {load_json('save.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
+		description=f"**{to_user.name}**'s total points: {load_json('save_wpco.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -281,7 +295,7 @@ async def points(ctx, user : discord.Member):
     try:
         embedvar = discord.Embed(
 		title=f"Amount of points for {user.name}:",
-		description=f"Total points: {load_json('save.json', f'{user.name}_pts', 'points')}",
+		description=f"Total points: {load_json('save_wpco.json', f'{user.name}_pts', 'points')}",
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -300,12 +314,12 @@ async def setup(ctx, password : str):
         await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
     elif len(password) >= 8:
         try:
-            load_json("save.json", f"{user.name}", "user_data")
+            load_json("save_wpco.json", f"{user.name}", "user_data")
             await ctx.reply(":warning: You have already done setup.")
         except KeyError:
-            edit_json("save.json", f"{user.name}", password, "user_data")
-            edit_json("save.json", f"{user.name}_pts", 0, "points")
-            edit_json("save.json", f"{user.name}_rank", "EnO", "rank")
+            edit_json("save_wpco.json", f"{user.name}", password, "user_data")
+            edit_json("save_wpco.json", f"{user.name}_pts", 0, "points")
+            edit_json("save_wpco.json", f"{user.name}_rank", "EnO", "rank")
             safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
             with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
             await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
@@ -320,10 +334,10 @@ async def promote(ctx, member : discord.Member, rank : str, password : str):
     time_format = time.strftime("Today at %I:%M %p UTC.")
 
     try:
-        load_json("save.json", f"{member.name}_rank", "rank")
-        if password == load_json("save.json", user.name, "user_data") and load_json("save.json", f"{user.name}_rank", "rank") != rank:
+        load_json("save_wpco.json", f"{member.name}_rank", "rank")
+        if password == load_json("save_wpco.json", user.name, "user_data") and load_json("save_wpco.json", f"{user.name}_rank", "rank") != rank:
             new_rank = RANKS[rank]
-            edit_json("save.json", f"{member.name}_rank", rank, "rank")      
+            edit_json("save_wpco.json", f"{member.name}_rank", rank, "rank")      
             await ctx.reply(f"{member.name}'s new rank: {new_rank}. Added by {user.name}")
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -337,7 +351,7 @@ async def check_password(ctx, password : str):
     #* thx plate
     user = ctx.author
 
-    if password == load_json("save.json", user.name, "user_data"):
+    if password == load_json("save_wpco.json", user.name, "user_data"):
         await ctx.reply(":white_check_mark: Password is **correct**.")
     else:
         await ctx.reply(":x: Password is **incorrect**, try again.")
@@ -374,7 +388,7 @@ async def on_ready():
     rprint(f"[[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
     rprint(f'[[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
     if not pymongo_installed:
-        rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save.json file.')
+        rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save_wpco.json and save_goc.json file.')
     find_save()
     #wait(1)
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
@@ -385,7 +399,7 @@ async def on_ready():
             client = MongoClient(MONGO_URL)
             client.admin.command('ping')  # Test MongoDB connection
             rprint(f'[[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
-        except Exception as e:
+        except Exception:
             rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
     rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     try:
@@ -463,8 +477,8 @@ async def on_command_error(ctx, error):
         print(f"ERR 11: {time_format} by {user.name}")
         await ctx.send(file=logo, embed=make_error_embed(11))
     else:
-        #! ummm
-        rprint(f"[[bright_red]ERROR[/bright_red]] Unidentified error: {error}\n{time_format}")
+        #! what happen?? (python error or smth)
+        rprint(f"[[bright_red]ERROR[/bright_red]] Unkown error: {error}\n{time_format}")
         await ctx.send(file=logo, embed=make_error_embed(error_msg=error))
 
 bot.run(load_json("config.json", "token"))
