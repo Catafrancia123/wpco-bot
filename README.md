@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-0.3.1-blue?style=plastic) [![Discord](https://img.shields.io/discord/990326151987724378?logo=discord&logoColor=white&color=5865F2)](https://discord.gg/fAH8GCTJDA) 
+![Version](https://img.shields.io/badge/version-0.3.2-blue?style=plastic) [![Discord](https://img.shields.io/discord/990326151987724378?logo=discord&logoColor=white&color=5865F2)](https://discord.gg/fAH8GCTJDA) 
 # wpco-bot
 This repository is the code to host the **World Peace Control Organization**'s bot. It's meant to be locally hosted, but you can host it on any platform. Currently, its being hosted at [Discloud](https://docs.discloud.com/en).
 > [!NOTE]
