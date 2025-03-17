@@ -108,7 +108,7 @@ BOTVER = "0.3.2"
 #* GOC using this bot and removal of rank promotion (they're manual!!). still will save the ranks const file for future use.
 clear()
 
-# Setup
+#* Setup
 class Bot(commands.Bot):
     def __init__(self):
         global intents
@@ -126,6 +126,15 @@ class Bot(commands.Bot):
 
 bot = Bot()
 client = discord.Client(intents=intents)
+
+#* Command Prompt 
+def command_prompt():
+    print("\n")
+    while True:
+        inp = str(input(f'{load_json("config.json", "run_bot_on", "settings")}-bot> '))
+        if inp == "shutdown":
+            #TODO: make this thing not show a BUNCH of errors
+            exit(0)
 
 #* Humor Commands
 @bot.hybrid_command(with_app_command = True, brief = "uhh my head hurts")
@@ -382,29 +391,33 @@ You can also type /help_s category for more info on a category. (coming soon)```
 #* Events
 @bot.event
 async def on_ready():
+    time = datetime.datetime.now()
+    time_format = time.strftime('%Y-%m-%d %H:%M:%S') 
     await bot.tree.sync()
-    rprint(f'[[light_green]SUCCESSFUL[/light_green]] Synced slash commands for all servers.')
-    rprint(f"[[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
-    rprint(f'[[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
+    rprint(f'[grey]{time_format}[/grey]  [[light_green]SUCCESSFUL[/light_green]] Synced slash commands for all servers.')
+    rprint(f"[grey]{time_format}[/grey] [[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
+    rprint(f'[grey]{time_format}[/grey] [[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
     if not pymongo_installed:
-        rprint(f'[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save_wpco.json and save_goc.json file.')
+        rprint(f'[grey]{time_format}[/grey] [[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save_wpco.json and save_goc.json file.')
     find_save()
     #wait(1)
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
     #await bot_timer(timer_input)
-    rprint(f"[[bright_yellow]WARNING[/bright_yellow]] Please ping catamapp/yassin1234 for bot maintenance/unhandled errors.")
+    rprint(f"[grey]{time_format}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Please ping catamapp/yassin1234 for bot maintenance/unhandled errors.")
     if pymongo_installed:
         try:
             client = MongoClient(MONGO_URL)
             client.admin.command('ping')  # Test MongoDB connection
-            rprint(f'[[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
+            rprint(f'[grey]{time_format}[/grey] [[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
         except Exception:
-            rprint(f'[[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
-    rprint(f'[[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
+            rprint(f'[grey]{time_format}[/grey] [[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
+    rprint(f'[grey]{time_format}[/grey] [[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     try:
         await asyncio.to_thread(playsound.playsound, "sounds/beep.wav")
     except Exception as e:
         pass
+    #TODO: fix this
+    #command_prompt()
 
 # TODO: fix this
 """@bot.event
@@ -480,4 +493,8 @@ async def on_command_error(ctx, error):
         rprint(f"[[bright_red]ERROR[/bright_red]] Unkown error: {error}\n{time_format}")
         await ctx.send(file=logo, embed=make_error_embed(error_msg=error))
 
-bot.run(load_json("config.json", "token"))
+bot_pick = load_json("config.json", "run_bot_on", "settings")
+if bot_pick == "wpco":
+    bot.run(load_json("config.json", "wpco", "tokens"))
+elif bot_pick == "goc":
+    bot.run(load_json("config.json", "goc", "tokens"))

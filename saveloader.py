@@ -1,4 +1,4 @@
-import json, os
+import json, os, datetime
 from rich import print as rprint
 
 try:
@@ -16,21 +16,23 @@ SAVE_GOC = "save_goc.json"
 
 def find_save(method: str = "json"):
     save_found = False
+    time = datetime.datetime.now()
+    time_format = time.strftime('%Y-%m-%d %H:%M:%S') 
     current_directory_files = os.listdir("./")
     if pymongo_installed and method.lower() == "mongodb":
         dblist = CLIENT.list_database_names()
         if "save" in dblist:
             save_found = True
-            rprint(f'[[light_green]FOUND[/light_green]] Save file from MongoDB exists and continuing session.')
+            rprint(f'[grey]{time_format}[/grey] [[light_green]FOUND[/light_green]] Save file from MongoDB exists and continuing session.')
     elif not pymongo_installed and method.lower() == "mongodb":
-        rprint(f"[[bright_red]ERROR[/bright_red]] pymongo not found, using alternative {SAVE_WPCO} and {SAVE_GOC} file.")
+        rprint(f"[grey]{time_format}[/grey] [[bright_red]ERROR[/bright_red]] pymongo not found, using alternative {SAVE_WPCO} and {SAVE_GOC} file.")
         find_save("json")
     elif method.lower() == "json":
         if SAVE_WPCO in current_directory_files and SAVE_GOC in current_directory_files:
             save_found = True
 
         if not save_found:
-            rprint(f'[[bright_red]NOT FOUND[/bright_red]] Save files doesn\'t exists and creating save file.')
+            rprint(f'[grey]{time_format}[/grey] [[bright_red]NOT FOUND[/bright_red]] Save files doesn\'t exists and creating save file.')
             save_template = {
                 "points" : {},
                 "rank" : {},
@@ -41,9 +43,9 @@ def find_save(method: str = "json"):
                 json.dump(save_template, outfile)
             with open(SAVE_GOC, mode="w", encoding="utf-8") as outfile:
                 json.dump(save_template, outfile)
-            rprint(f'[[light_green]CREATED[/light_green]] Save file "{SAVE_WPCO}" and "{SAVE_GOC}" has been created and continuing session.')
+            rprint(f'[grey]{time_format}[/grey] [[light_green]CREATED[/light_green]] Save file "{SAVE_WPCO}" and "{SAVE_GOC}" has been created and continuing session.')
         else:
-            rprint(f'[[light_green]FOUND[/light_green]] Save file "{SAVE_WPCO}" and "{SAVE_GOC}" exists and continuing session.')
+            rprint(f'[grey]{time_format}[/grey] [[light_green]FOUND[/light_green]] Save file "{SAVE_WPCO}" and "{SAVE_GOC}" exists and continuing session.')
 
 def load_json(path : str, to_load : str, library : str = None): #* loads stuff from json
     with open(path, mode="r", encoding="utf-8") as read_file:

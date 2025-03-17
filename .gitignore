@@ -5,6 +5,7 @@ __pycache__/
 *.un~
 *.py~
 *.json~
+*.md~
 
 # Environments
 .env
