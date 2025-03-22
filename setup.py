@@ -1,6 +1,5 @@
 import subprocess, sys, os
 packages = ["discord.py", "rich", "playsound3", "pymongo"]
-print("Ignore the warning above\n")
 
 def clear():
     if sys.platform.startswith(('win32')):
@@ -9,6 +8,7 @@ def clear():
         os.system('clear')
 
 clear()
+print("Setup\n")
 while True:
     database_pkgs_confirm = str(input("Would you like to install pymongo (MongoDB)? (y/n)\n> "))
     if database_pkgs_confirm.lower() == "y":
@@ -30,5 +30,9 @@ subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--q
 counter = 1
 for i in packages:
     subprocess.run([sys.executable, "-m", "pip", "install", i,  "--quiet", "-U"])
-    print(f"[OK] {i} has been installed. (PKG-{counter:02d})")
+    if counter >= 2:
+        from rich import print as rprint
+        rprint(f"[light_green][OK][/light_green] {i} has been installed. (PKG-{counter:02d})")
+    else:
+        print(f"[OK] {i} has been installed. (PKG-{counter:02d})")
     counter += 1
