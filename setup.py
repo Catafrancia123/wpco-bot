@@ -26,10 +26,10 @@ while True:
         print("Invalid Input.\n")
 
 print(end=None)
-subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"])
+subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"], check=True)
 counter = 1
 for i in packages:
-    subprocess.run([sys.executable, "-m", "pip", "install", i,  "--quiet", "-U"])
+    subprocess.run([sys.executable, "-m", "pip", "install", i,  "--quiet", "-U"], check=True)
     if counter >= 2:
         from rich import print as rprint
         rprint(f"[light_green][OK][/light_green] {i} has been installed. (PKG-{counter:02d})")

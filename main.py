@@ -1,6 +1,6 @@
-import discord, datetime, sys, os, asyncio
-import discord.gateway
+import discord, datetime, sys, os, asyncio, random, discord.gateway, time
 import playsound3 as playsound
+from pathlib import Path
 from rich import print as rprint
 from discord.ext import commands
 from saveloader import *
@@ -32,6 +32,27 @@ def clear():
         os.system('cls')
     elif sys.platform.startswith(('linux', 'cygwin', 'darwin', 'freebsd')):
         os.system('clear')
+
+async def help_bot(ctx):
+    await ctx.reply("""```Humor Commands:
+  wack            ow my head hurts - ai bot??
+  wake_yassin    
+  say             Make the bot say anything....
+  shucks
+  roll            Classic RNG command.
+ 
+  Functional Commands:
+  add_points      Add points to a member.
+  check_password  Checks your current password
+  help_s          Shows this message
+  ping            Shows the bot's latency
+  points          Get the number of points a user has/you have.     
+  self_deploy     Used for logging Self-Deployments (Note: check description)
+  setup           Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)
+  shutdown        Turns off the bot. (no need terminal killing)
+
+Type /help_s command for more info on a command. (coming soon)
+You can also type /help_s category for more info on a category. (coming soon)```""")
 
 """async def bot_timer(unix_target : int = 0):
     if unix_target == 0: 
@@ -185,11 +206,19 @@ async def wake_yassin(ctx):
 async def shucks(ctx):
     await ctx.reply("https://cdn.discordapp.com/attachments/1207383289225281606/1328003148224139355/youtube-ugfghba-rBs.mp4?ex=67851ecf&is=6783cd4f&hm=ac276199166ddcee99252fd3d85f4ecbe4c24343104254e003cae82e8ee154ee&    ")
 
+#TODO: delete user messsage if sent with "$", else run command normally.
 @bot.hybrid_command(with_app_command = True, brief = "Make the bot say anything!")
 @bot.is_blacklisted()
 @commands.has_any_role(*COMBINED_ROLES)
-async def say(ctx, *, message):
-    await ctx.reply(str(message))
+async def say(ctx, *, text):
+    #await ctx.message.delete()
+    await ctx.send(str(text))
+
+@bot.hybrid_command(with_app_command = True, brief = "Classic RNG command.")
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
+async def roll(ctx, end_num : int):
+    await ctx.reply(f":game_die: Rolled Number: {random.randint(1, end_num)}")
 
 #* Functional Commands
 @bot.hybrid_command(with_app_command = True, brief = "Checks bot ping.")
@@ -221,9 +250,10 @@ async def shutdown(ctx, password : str):
     else:
         await ctx.send(bot.make_error_embed(3))
 
-# TODO: fix this
-"""@bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
+# TODO: add 4 hour limit (suggested by tamago) / 7 hour limit (handbook)
+@bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
 @bot.is_registered()
+@bot.is_blacklisted()
 @commands.has_any_role(*WPCO_ROLES)
 async def self_deploy(ctx, status: str):
     global start, paused_at, total_paused_time, deployment_id, deployment_text, unix_start, g_user
@@ -231,10 +261,6 @@ async def self_deploy(ctx, status: str):
     user = ctx.author
     safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
 
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/lightningstormyt.")
-    else: pass
-    
     if "start" not in globals():
         start = 0
     if "paused_at" not in globals():
@@ -245,20 +271,34 @@ async def self_deploy(ctx, status: str):
         deployment_id = 0
 
     if status.upper() == "S":
+        deployment_id += 1
         start = time.time()
         unix_start = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         deployment_text = datetime.datetime.now(datetime.timezone.utc).strftime("deployment_%d_%m_%Y")
-        deployment_id += 1
+        time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+        embedvar = discord.Embed(
+            title="Self-Deployment Started",
+            description=f"Operative: {user.name}\nStarted at: <t:{unix_start}:F>",
+            color=discord.Color.green(),)
+        embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
         edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", unix_start, "deployment_unix")
-        await ctx.reply(f"Started Self-Deployment for {user.name}. Started at: <t:{unix_start}:F>") 
+        await ctx.send(file=logo, embed=embedvar)
     elif status.upper() == "P":
         if paused_at == 0:
             paused_at = time.time()
             unix_pause = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(paused_at - start - total_paused_time))
-            await ctx.reply(f"Paused Self-Deployment for {user.name}. Paused at: <t:{unix_pause}:F>\nElapsed time: {elapsed_time}")
+            time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+            embedvar = discord.Embed(
+                title="Self-Deployment Paused",
+                description=f"Operative: {user.name}\nPaused at: <t:{unix_pause}:F>\nElapsed time: {elapsed_time}",
+                color=discord.Color.yellow(),)
+            embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+            embedvar.set_thumbnail(url="attachment://WPCO.png")
+            await ctx.send(file=logo, embed=embedvar)
         else:
-            await ctx.reply("The deployment is already paused!")
+            await ctx.reply("The deployment is already paused.")
     elif status.upper() == "UP":
         # wake up boi
         if paused_at != 0:
@@ -267,20 +307,33 @@ async def self_deploy(ctx, status: str):
             paused_at = 0
             unix_unpause = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(time.time() - start - total_paused_time))
-            await ctx.reply(f"Unpaused Self-Deployment for {user.name}. Unpaused at: <t:{unix_unpause}:F>\nElapsed time: {elapsed_time}")
+            time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+            embedvar = discord.Embed(
+                title="Self-Deployment Unpaused",
+                description=f"Operative: {user.name}\nUnpaused at: <t:{unix_unpause}:F>\nElapsed time: {elapsed_time}",
+                color=discord.Color.yellow(),)
+            embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+            embedvar.set_thumbnail(url="attachment://WPCO.png")
+            await ctx.send(file=logo, embed=embedvar)
         else:
-            await ctx.reply("The deployment is not paused!")
+            await ctx.reply("The deployment is not paused.")
     elif status.upper() == "E":
         end = time.time()
         try:
             total_time = end - start - total_paused_time
             unix_end = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(total_time))
-
+            time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+            embedvar = discord.Embed(
+                title="Self-Deployment Ended",
+                description=f"Operative: {user.name}\nEnded at: <t:{unix_end}:F>\nElapsed time: {elapsed_time}",
+                color=discord.Color.red(),)
+            embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+            embedvar.set_thumbnail(url="attachment://WPCO.png")
             edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
-            await ctx.reply(f"Ended Self-Deployment for {user.name}. Ended at: <t:{unix_end}:F>\nTotal deployment time: {elapsed_time}")
+            await ctx.send(file=logo, embed=embedvar)
         except NameError:
-            await ctx.reply("You did not start a deployment yet.")"""
+            await ctx.reply("You did not start a deployment yet.")
         
 @bot.hybrid_command(with_app_command = True, brief = "Add points to a member.", help = "Add points to a member. (put a negative infront if you want to remove points)")
 @bot.is_registered()
@@ -332,6 +385,7 @@ async def points(ctx, user : discord.Member):
 @commands.has_any_role(*COMBINED_ROLES)
 async def setup(ctx, password : str):
     user = ctx.author
+    selfdep_file = Path("/path/to/file")
 
     if len(password) < 8:
         await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
@@ -343,29 +397,12 @@ async def setup(ctx, password : str):
             edit_json(SAVE_FILE, f"{user.name}", password, "user_data")
             edit_json(SAVE_FILE, f"{user.name}_pts", 0, "points")
             if RUN_ON_SERVER != "goc":
-                edit_json(SAVE_FILE, f"{user.name}_rank", "EnO", "rank")
-                safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
-                with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
+                if selfdep_file.is_file():
+                    pass
+                else:
+                    safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
+                    with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
             await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
-
-@bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
-@bot.is_registered()
-@bot.is_blacklisted()
-@commands.has_any_role(*ADMIN_ROLES)
-async def promote(ctx, member : discord.Member, rank : str, password : str):
-    user = ctx.author
-    time = datetime.datetime.now(datetime.timezone.utc)
-    time_format = time.strftime("Today at %I:%M %p UTC.")
-
-    try:
-        load_json(SAVE_FILE, f"{member.name}_rank", "rank")
-        if password == load_json(SAVE_FILE, user.name, "user_data") and load_json(SAVE_FILE, f"{user.name}_rank", "rank") != rank:
-            new_rank = RANKS[rank]
-            edit_json(SAVE_FILE, f"{member.name}_rank", rank, "rank")      
-            await ctx.reply(f"{member.name}'s new rank: {new_rank}. Added by {user.name}")
-    except KeyError:
-        print(f"ERR 07: {time_format} by {user.name}")
-        await ctx.reply(f"**{member.name}** has not registered yet. (ERR 07)\nPlease tell **{member.name}** to run command ``/setup``, then try again.")
 
 @bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
 @commands.has_any_role(*COMBINED_ROLES)
@@ -389,14 +426,14 @@ async def help_s(ctx):
   wake_yassin    
   say             Make the bot say anything....
   shucks
+  roll            Classic RNG command.
  
   Functional Commands:
   add_points      Add points to a member.
   check_password  Checks your current password
   help_s          Shows this message
   ping            Shows the bot's latency
-  points          Get the number of points a user has/you have.
-  promote         Promotes a user to a specific rank (Note: check description)      
+  points          Get the number of points a user has/you have.     
   self_deploy     Used for logging Self-Deployments (Note: check description)
   setup           Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)
   shutdown        Turns off the bot. (no need terminal killing)

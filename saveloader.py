@@ -36,7 +36,6 @@ def find_save(method: str = "json"):
             rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_red]NOT FOUND[/bright_red]] Save files doesn\'t exists and creating save file.')
             save_template_wpco = {
                 "points" : {},
-                "rank" : {},
                 "user_data" : {}
             }
 
@@ -51,9 +50,9 @@ def find_save(method: str = "json"):
                 elif CHOOSE_SAVE == "goc":
                     json.dump(save_template_goc, outfile)
                 outfile.close()
-            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]CREATED[/light_green]] Save file "{SAVES[0]}" and "{SAVES[1]}" has been created and continuing session.')
+            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]CREATED[/light_green]] Save files have been created and continuing session.')
         else:
-            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]FOUND[/light_green]] Save file "{SAVES[0]}" and "{SAVES[1]}" exists and continuing session.')
+            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]FOUND[/light_green]] Save files exists and continuing session.')
 
 def load_json(path : str, to_load : str, library : str = None): #* loads stuff from json
     with open(path, mode="r", encoding="utf-8") as read_file:
