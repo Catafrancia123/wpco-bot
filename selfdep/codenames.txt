@@ -5,3 +5,5 @@ ec_122 = Plate
 gamhigh = Panther
 noobfusion = Rammer
 tamagoboi0941 = Tamago
+kushine1 = Kushine
+lawrenceaquino0 = Tango

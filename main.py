@@ -2,6 +2,7 @@ import discord, datetime, sys, os, asyncio, random, discord.gateway, time
 import playsound3 as playsound
 from pathlib import Path
 from rich import print as rprint
+from rich.progress import Progress, BarColumn, TimeElapsedColumn, SpinnerColumn
 from discord.ext import commands
 from saveloader import *
 #* install better comments on vscode for better comments!!
@@ -71,7 +72,7 @@ You can also type /help_s category for more info on a category. (coming soon)```
 
 RUN_ON_SERVER = load_json("config.json", "run_bot_on", "settings")
 SAVE_FILE = f"save_{RUN_ON_SERVER}.json"
-EVENTS = ("Deployment", "Training", "Tryout", "Supervision")
+EVENTS = {1: "Deployment", 2: "Basic Training", 3: "Combat Training"}
 WPCO_ROLES = [1288801886706860082, 1207498264644157521, 1297825813567377449]
 GOC_ROLE = [989415158549995540]
 COMBINED_ROLES = WPCO_ROLES + GOC_ROLE
@@ -153,23 +154,58 @@ class Bot(commands.Bot):
 
         return embedvar
     
-    #* USE THIS LATER.
-    """def add_server(self, name : str, token : int):
-        TOKEN_LIST.append(token)
-        rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Added server {name}.')
-    """
+    async def startup_progressbar(self):
+        with Progress(
+        "[progress.description]{task.description}",
+        SpinnerColumn(),
+        BarColumn(),
+        TimeElapsedColumn(),
+        ) as progress:
+            task = progress.add_task("[cyan]Starting up...[/cyan]", total=100)
 
+            for i in range(6):  
+                progress.update(task, advance=10)
+                time.sleep(0.16)
+
+            progress.update(task, completed=100)
+            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
+
+class UIInput_Events(discord.ui.Modal):
+    def __init__(self, title="Event Forum"):
+        self.host = discord.ui.TextInput(label="Host", placeholder="Enter host name...", required=True)
+        self.co_host = discord.ui.TextInput(label="Co-Host", placeholder="Enter co-host name...", required=True)
+        self.supervisor = discord.ui.TextInput(label="Supervisor", placeholder="Enter supervisor name...", required=True)
+        self.type = 1
+
+    async def on_submit(self, ctx):
+        time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+        event_channel = discord.utils.get(ctx.guild.text_channels, name="》events")
+        if not event_channel:
+            raise Exception("Channel not Found.")
+        
+        embedvar = discord.Embed(
+            title=EVENTS[self.type],
+            description=f"Host: {self.host.value}\nCo-host: {self.co_host.value}\nSupervisor: {self.supervisor.value}",
+            color=discord.Color.blue
+        )
+        embedvar.set_footer(text=time_format)
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
+
+        #await event_channel.send(file=logo, embed=embedvar)
+        await ctx.send(file=logo, embed=embedvar)
+        await ctx.send(f"Event {EVENTS[self.type]} Created.", ephemeral=True)
+    
 bot = Bot()
 client = discord.Client(intents=intents)
 
 #* Command Prompt 
-def command_prompt():
+async def command_prompt():
     print("\n")
     while True:
         inp = str(input(f'{load_json("config.json", "run_bot_on", "settings")}-bot> '))
         if inp == "shutdown":
-            #TODO: make this thing not show a BUNCH of errors
-            exit(0)
+            print("Bot shutting down...")
+            await bot.close()
 
 #* Humor Commands
 @bot.hybrid_command(with_app_command = True, brief = "uhh my head hurts")
@@ -385,7 +421,8 @@ async def points(ctx, user : discord.Member):
 @commands.has_any_role(*COMBINED_ROLES)
 async def setup(ctx, password : str):
     user = ctx.author
-    selfdep_file = Path("/path/to/file")
+    safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
+    selfdep_file = Path(f"./selfdep/{safe_name}.json")
 
     if len(password) < 8:
         await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
@@ -400,7 +437,6 @@ async def setup(ctx, password : str):
                 if selfdep_file.is_file():
                     pass
                 else:
-                    safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
                     with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
             await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
 
@@ -440,16 +476,27 @@ async def help_s(ctx):
 
 Type /help_s command for more info on a command. (coming soon)
 You can also type /help_s category for more info on a category. (coming soon)```""")
+    
+@bot.hybrid_command(with_app_command = True, brief = "Read the description for the event codes.", help="1: Deployment, 2: Basic Training, 3: Combat Training")
+@commands.has_any_role(*ADMIN_ROLES)
+@bot.is_blacklisted()
+@bot.is_registered()
+async def start_event(interaction: discord.Interaction, event: int):
+    uiinput = UIInput_Events()
+    uiinput.type = event
+    await interaction.response.send_modal(uiinput)
 
 #* Events
 @bot.event
 async def on_ready():
+    #! asyncio stupid, fix this
+    await asyncio.to_thread(bot.startup_progressbar)
     await bot.tree.sync()
     rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Synced slash commands for all servers.')
     rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
     rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
     if not pymongo_installed:
-        rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save_wpco.json and save_goc.json file.')
+        rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save files.')
     find_save()
     #wait(1)
     #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
@@ -462,13 +509,11 @@ async def on_ready():
             rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
         except Exception:
             rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
-    rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     try:
         await asyncio.to_thread(playsound.playsound, "sounds/beep.wav")
     except Exception as e:
         pass
-    #TODO: fix this
-    #command_prompt()
+    await asyncio.to_thread(command_prompt)
 
 # TODO: fix this
 """@bot.event
