@@ -1,9 +1,15 @@
+""" Version 0.3.3:
+    - New autoroles feature (WPCO only)
+    - Self-Deployment is back (still no 4hr limit)
+    - Event hosting and ping in dms (WIP & WPCO only.)
+    - Autoroles for new members who joined."""
+
 import discord, datetime, sys, os, asyncio, random, discord.gateway, time
+from discord.ext import commands
 import playsound3 as playsound
 from pathlib import Path
 from rich import print as rprint
 from rich.progress import Progress, BarColumn, TimeElapsedColumn, SpinnerColumn
-from discord.ext import commands
 from saveloader import *
 #* install better comments on vscode for better comments!!
 
@@ -70,20 +76,19 @@ You can also type /help_s category for more info on a category. (coming soon)```
         else:
             rprint("[[bright_red]ERROR[/bright_red]] The target shutdown time has already passed.")"""
 
+BOTVER = "0.3.3"
 RUN_ON_SERVER = load_json("config.json", "run_bot_on", "settings")
 SAVE_FILE = f"save_{RUN_ON_SERVER}.json"
 EVENTS = {1: "Deployment", 2: "Basic Training", 3: "Combat Training"}
-WPCO_ROLES = [1288801886706860082, 1207498264644157521, 1297825813567377449]
+WPCO_ROLE = [1207498264644157521]
 GOC_ROLE = [989415158549995540]
-COMBINED_ROLES = WPCO_ROLES + GOC_ROLE
-ADMIN_ROLES = (1288801886706860082, 1272839552314118306, 1345327248265449502, 1207383065270419528, 1224066316990812272, 1179524589592784996, 1349692227223289896, 1244197639331774556, 1351470675013013574)
+COMBINED_ROLES = WPCO_ROLE + GOC_ROLE
+ADMIN_ROLES = (1345327248265449502, 1207383065270419528, 1224066316990812272, 1179524589592784996, 1349692227223289896, 1244197639331774556, 1351470675013013574)
 deployment_id = 0
+AUTOROLES_REACTIONS = {}
 RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operative", "ElO" : "Elite Operative", "SpC" : "Specialist", "LnC" : "Lance Corporal", # Low ranking
          "SgT" : "Sergeant", "SsT" : "Staff Sergeant", "SfC" : "Sergeant First Class", "OfC" : "Officer", "SnO" : "Senior Officer", "VnO" : "Veteran Officer", "CfO" : "Chief Officer", # Medium ranking
          "2LT" : "2nd Lieutenant", "1LT" : "1st Lieutenant", "CpT" : "Captain", "MaJ" : "Major", "C" : "Colonel", "M" : "Marshal", "MG" : "Major General", "GeN" : "General"} # High ranking
-BOTVER = "0.3.2"
-""" GOC using this bot (for points) and removal of rank promotion (they're manual!!). 
-    Still will save the ranks const variable for future use."""
 clear()
 
 #* Setup
@@ -93,7 +98,8 @@ class Bot(commands.Bot):
         intents = discord.Intents.default()
 
         #* Permissions
-        intents.members = True #! see members
+        intents.guilds = True #! controls the guild
+        intents.members = True #! controls the members of the guild
         intents.message_content = True #! see messages
         intents.reactions = True #! see reactions
         super().__init__(command_prefix = "$", intents = intents)
@@ -199,12 +205,14 @@ bot = Bot()
 client = discord.Client(intents=intents)
 
 #* Command Prompt 
-async def command_prompt():
+async def command_prompt(ctx):
+    unix = int(datetime.datetime.now().timestamp())
     print("\n")
     while True:
         inp = str(input(f'{load_json("config.json", "run_bot_on", "settings")}-bot> '))
         if inp == "shutdown":
-            print("Bot shutting down...")
+            await ctx.reply(f"Bot shutdown initiated by **COMMAND** at: <t:{unix}:F> (EVN 02)")
+            rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Bot shutdown initiated by you!!")
             await bot.close()
 
 #* Humor Commands
@@ -253,8 +261,8 @@ async def say(ctx, *, text):
 @bot.hybrid_command(with_app_command = True, brief = "Classic RNG command.")
 @bot.is_blacklisted()
 @commands.has_any_role(*COMBINED_ROLES)
-async def roll(ctx, end_num : int):
-    await ctx.reply(f":game_die: Rolled Number: {random.randint(1, end_num)}")
+async def roll(ctx, end_num: int, hide: bool = False):
+    await ctx.reply(f":game_die: Rolled Number: {random.randint(1, end_num)}", ephemeral=hide)
 
 #* Functional Commands
 @bot.hybrid_command(with_app_command = True, brief = "Checks bot ping.")
@@ -275,7 +283,7 @@ async def ping(ctx):
 @bot.is_registered()
 @bot.is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
-async def shutdown(ctx, password : str):
+async def shutdown(ctx, password: str):
     user = ctx.author
     unix = int(datetime.datetime.now().timestamp())
 
@@ -284,13 +292,13 @@ async def shutdown(ctx, password : str):
         rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Bot shutdown initiated by {user.name}.")
         await bot.close()
     else:
-        await ctx.send(bot.make_error_embed(3))
+        await ctx.send(file=logo, embed=bot.make_error_embed(3))
 
 # TODO: add 4 hour limit (suggested by tamago) / 7 hour limit (handbook)
 @bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
 @bot.is_registered()
 @bot.is_blacklisted()
-@commands.has_any_role(*WPCO_ROLES)
+@commands.has_any_role(*WPCO_ROLE)
 async def self_deploy(ctx, status: str):
     global start, paused_at, total_paused_time, deployment_id, deployment_text, unix_start, g_user
     g_user = ctx.author
@@ -334,7 +342,7 @@ async def self_deploy(ctx, status: str):
             embedvar.set_thumbnail(url="attachment://WPCO.png")
             await ctx.send(file=logo, embed=embedvar)
         else:
-            await ctx.reply("The deployment is already paused.")
+            await ctx.reply("The deployment is already paused.", ephemeral=True)
     elif status.upper() == "UP":
         # wake up boi
         if paused_at != 0:
@@ -352,7 +360,7 @@ async def self_deploy(ctx, status: str):
             embedvar.set_thumbnail(url="attachment://WPCO.png")
             await ctx.send(file=logo, embed=embedvar)
         else:
-            await ctx.reply("The deployment is not paused.")
+            await ctx.reply("The deployment is not paused.", ephemeral=True)
     elif status.upper() == "E":
         end = time.time()
         try:
@@ -369,7 +377,7 @@ async def self_deploy(ctx, status: str):
             edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
             await ctx.send(file=logo, embed=embedvar)
         except NameError:
-            await ctx.reply("You did not start a deployment yet.")
+            await ctx.reply("You did not start a deployment yet.", ephemeral=True)
         
 @bot.hybrid_command(with_app_command = True, brief = "Add points to a member.", help = "Add points to a member. (put a negative infront if you want to remove points)")
 @bot.is_registered()
@@ -400,7 +408,7 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
 @bot.is_registered()
 @bot.is_blacklisted()
 @commands.has_any_role(*COMBINED_ROLES)
-async def points(ctx, user : discord.Member):
+async def points(ctx, user: discord.Member):
     embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = time.strftime("Today at %I:%M %p UTC.")
@@ -419,13 +427,13 @@ async def points(ctx, user : discord.Member):
 @bot.hybrid_command(with_app_command = True, brief = "Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)")
 @bot.is_blacklisted()
 @commands.has_any_role(*COMBINED_ROLES)
-async def setup(ctx, password : str):
+async def setup(ctx, password: str):
     user = ctx.author
     safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
     selfdep_file = Path(f"./selfdep/{safe_name}.json")
 
     if len(password) < 8:
-        await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
+        await ctx.reply(":warning: You need a minimal of 8 characters for your password.", ephemeral=True)
     elif len(password) >= 8:
         try:
             load_json(SAVE_FILE, f"{user.name}", "user_data")
@@ -438,20 +446,20 @@ async def setup(ctx, password : str):
                     pass
                 else:
                     with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
-            await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
+            await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.", ephemeral=True)
 
-@bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
+@bot.hybrid_command(with_app_command = True, brief = "Checks your password. if you forgot it, dm catamapp")
 @commands.has_any_role(*COMBINED_ROLES)
 @bot.is_registered()
 @bot.is_blacklisted()
-async def check_password(ctx, password : str):
+async def check_password(ctx, password: str):
     #* thx plate
     user = ctx.author
 
     if password == load_json(SAVE_FILE, user.name, "user_data"):
-        await ctx.reply(":white_check_mark: Password is **correct**.")
+        await ctx.reply(":white_check_mark: Password is **correct**.", ephemeral=True)
     else:
-        await ctx.reply(":x: Password is **incorrect**, try again.")
+        await ctx.reply(":x: Password is **incorrect**, try again.", ephemeral=True)
 
 @bot.hybrid_command(with_app_command = True, brief = "Basic Help Command")
 @commands.has_any_role(*COMBINED_ROLES)
@@ -477,7 +485,7 @@ async def help_s(ctx):
 Type /help_s command for more info on a command. (coming soon)
 You can also type /help_s category for more info on a category. (coming soon)```""")
     
-@bot.hybrid_command(with_app_command = True, brief = "Read the description for the event codes.", help="1: Deployment, 2: Basic Training, 3: Combat Training")
+@bot.hybrid_command(with_app_command = True, brief = "Read the description for the event codes.", description="1: Deployment, 2: Basic Training, 3: Combat Training")
 @commands.has_any_role(*ADMIN_ROLES)
 @bot.is_blacklisted()
 @bot.is_registered()
@@ -485,6 +493,21 @@ async def start_event(interaction: discord.Interaction, event: int):
     uiinput = UIInput_Events()
     uiinput.type = event
     await interaction.response.send_modal(uiinput)
+
+@bot.hybrid_command(with_app_command = True, brief = "Adds a member to the faction. (WPCO ONLY.)")
+@commands.has_any_role(*ADMIN_ROLES)
+@bot.is_blacklisted()
+@bot.is_registered()
+async def add_member(ctx, user: discord.Member):
+    role = ctx.guild.get_role(WPCO_ROLE[0])
+    if role is None:
+        raise Exception("Role not found.")
+    
+    if role not in user.roles:
+        await user.add_roles(role, reason=f"Welcome to WPCO, {user.name}!")
+        await ctx.send(f"{user.name} added as a member, please welcome him.", ephemeral=True)
+    else:
+        await ctx.send(f"{user.name} has already been a member.", ephemeral=True)
 
 #* Events
 @bot.event
@@ -513,7 +536,32 @@ async def on_ready():
         await asyncio.to_thread(playsound.playsound, "sounds/beep.wav")
     except Exception as e:
         pass
-    await asyncio.to_thread(command_prompt)
+    #TODO: fix this
+    #await asyncio.to_thread(command_prompt)
+
+@bot.event
+async def on_member_join(user):
+    if user.guild.id == 1207335443608113152:
+        roles = [1213355943690117140, 1207670421252476928, 1356518786068381796, 1213354335195365396]
+        for i in roles:
+            role = user.guild.get_role(i)
+            await user.add_roles(role, reason=f"{user.name} joined the server.")
+
+@bot.event
+async def on_raw_reaction_add(reaction):
+    if reaction.message_author_id == bot.user.id:
+        print(f"User: {bot.get_user(reaction.user_id)}, Emoji: {reaction.emoji}")
+
+@bot.event
+async def on_raw_reaction_remove(reaction):
+    #* manual fetching haiyaa (reaction.message_author_id doesn't work in this event!!!)
+    guild = bot.get_guild(reaction.guild_id)
+    channel = guild.get_channel(reaction.channel_id)
+    message = await channel.fetch_message(reaction.message_id)
+    author = message.author
+
+    if author.id == bot.user.id:
+        print(f"User: {bot.get_user(reaction.user_id)}, Removed Emoji: {reaction.emoji}")
 
 # TODO: fix this
 """@bot.event
