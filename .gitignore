@@ -28,6 +28,8 @@ dmypy.json
 # misc
 README.md
 test.py
+test.txt
+test2.py
 config.json
 test.json
 pymongo-quickstart/

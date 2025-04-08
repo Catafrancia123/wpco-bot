@@ -1,9 +1,16 @@
-import discord, datetime, sys, os, asyncio
-import discord.gateway
-import playsound3 as playsound
-from rich import print as rprint
+""" Version 0.3.3:
+    - New autoroles feature (WPCO only)
+    - Self-Deployment is back (still no 4hr limit)
+    - Event hosting and ping in dms (WIP & WPCO only.)
+    - Autoroles for new members who joined."""
+
+import discord, datetime, sys, os, asyncio, random, json, time
 from discord.ext import commands
-from saveloader import *
+import playsound3 as playsound
+from pathlib import Path
+from rich import print as rprint
+from rich.progress import Progress, BarColumn, TimeElapsedColumn, SpinnerColumn
+from saveloader import edit_json, load_json, load_mongodb, edit_mongodb, find_save
 #* install better comments on vscode for better comments!!
 
 pymongo_installed = True
@@ -33,54 +40,26 @@ def clear():
     elif sys.platform.startswith(('linux', 'cygwin', 'darwin', 'freebsd')):
         os.system('clear')
 
-def is_blacklisted():
-    async def predicate_bl(ctx):
-        user = ctx.author
-        BLACKLIST_ROLES = (1303267805411545098, 1349692227223289896)
-        role = discord.utils.find(lambda r: r.id in BLACKLIST_ROLES, ctx.message.guild.roles)
+async def help_bot(ctx):
+    await ctx.reply("""```Humor Commands:
+  wack            ow my head hurts - ai bot??
+  wake_yassin    
+  say             Make the bot say anything....
+  shucks
+  roll            Classic RNG command.
+ 
+  Functional Commands:
+  add_points      Add points to a member.
+  check_password  Checks your current password
+  help_s          Shows this message
+  ping            Shows the bot's latency
+  points          Get the number of points a user has/you have.     
+  self_deploy     Used for logging Self-Deployments (Note: check description)
+  setup           Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)
+  shutdown        Turns off the bot. (no need terminal killing)
 
-        if role in user.roles:
-            await ctx.reply(f"You have been banned from the bot. \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-            return False
-        else:
-            return True
-    return commands.check(predicate_bl)
-
-def is_registered():
-    async def predicate(ctx):
-        user = ctx.author
-        try: 
-            load_json("save_wpco.json", user.name, "user_data")
-            return True
-        except KeyError: 
-            return False
-    return commands.check(predicate)
-
-def make_error_embed(error_code : int = 99, error_msg : str = None):
-	time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
-	#* add more later!!
-	errors = {1: "Command not found/doesn't exist.", 
-              2:"An input is missing, please try again.",
-              3:"An input is invalid/unprocessable.",
-              4:"You don't have permission to run this command.",
-              5:"Server Error. Either from API or Discord.",
-              6:"You must run ``/setup`` before running any commands. Its necessary for the bot to run.\nIf you already done ``/setup`` and this shows up, please ping catamapp or yassin1234 ASAP.",
-              7:"Bot doesn't have permission to do the following action. Ping catamapp or yassin1234 ASAP.",
-              8:"Command didn't register properly. Ping catamapp or yassin1234 ASAP.",
-              9:"Intents not properly enabled. Ping catamapp or yassin1234 ASAP.",
-              10:"Connection with Discord failed. Please try again later.",
-              11:"Connection with Discord failed. Please try again later.", 
-              99:f"Unknown Error. Please ping catamapp/yassin1234 ASAP. (ERR ??)\nError Message: {error_msg}\n(IF THIS IS A KEY ERROR IGNORE.)"}
-
-	embedvar = discord.Embed (
-	    title=f"Error {error_code:02d}",
-	    description=f"{errors[error_code]}",
-	    color=discord.Color.red(),
-	)
-	embedvar.set_footer(text=time_format)
-	embedvar.set_thumbnail(url="attachment://WPCO.png")
-
-	return embedvar
+Type /help_s command for more info on a command. (coming soon)
+You can also type /help_s category for more info on a category. (coming soon)```""")
 
 """async def bot_timer(unix_target : int = 0):
     if unix_target == 0: 
@@ -95,56 +74,155 @@ def make_error_embed(error_code : int = 99, error_msg : str = None):
             await asyncio.sleep(timer)  
             await bot.close()
         else:
-            print("[[bright_red]ERROR[/bright_red]] The target shutdown time has already passed.")"""
+            rprint("[[bright_red]ERROR[/bright_red]] The target shutdown time has already passed.")"""
 
-EVENTS = ("Deployment", "Training", "Tryout", "Supervision")
-ROLES = (1288801886706860082, 1207498264644157521, 1297825813567377449, 989415158549995540) 
-ADMIN_ROLES = (1288801886706860082, 1272839552314118306, 1345327248265449502, 1207383065270419528, 1224066316990812272, 1179524589592784996, 1349692227223289896, 1244197639331774556)
+BOTVER = "0.3.3"
+RUN_ON_SERVER = load_json("config.json", "run_bot_on", "settings")
+SAVE_FILE = f"save_{RUN_ON_SERVER}.json"
+EVENTS = {1: "Deployment", 2: "Basic Training", 3: "Combat Training"}
+WPCO_ROLE = [1207498264644157521]
+GOC_ROLE = [989415158549995540]
+COMBINED_ROLES = WPCO_ROLE + GOC_ROLE
+ADMIN_ROLES = (1345327248265449502, 1207383065270419528, 1224066316990812272, 1179524589592784996, 1349692227223289896, 1244197639331774556, 1351470675013013574)
 deployment_id = 0
 RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operative", "ElO" : "Elite Operative", "SpC" : "Specialist", "LnC" : "Lance Corporal", # Low ranking
          "SgT" : "Sergeant", "SsT" : "Staff Sergeant", "SfC" : "Sergeant First Class", "OfC" : "Officer", "SnO" : "Senior Officer", "VnO" : "Veteran Officer", "CfO" : "Chief Officer", # Medium ranking
          "2LT" : "2nd Lieutenant", "1LT" : "1st Lieutenant", "CpT" : "Captain", "MaJ" : "Major", "C" : "Colonel", "M" : "Marshal", "MG" : "Major General", "GeN" : "General"} # High ranking
-BOTVER = "0.3.2" 
-#* GOC using this bot and removal of rank promotion (they're manual!!). still will save the ranks const file for future use.
 clear()
 
 #* Setup
 class Bot(commands.Bot):
     def __init__(self):
+        #* I HAVE THE POWER OF EVERYTHING!  
         global intents
-        intents = discord.Intents.default()
+        intents = discord.Intents.all()
 
-        #* Permissions
-        intents.members = True # see members
-        intents.message_content = True # see messages
-        intents.reactions = True # see reactions
         super().__init__(command_prefix = "$", intents = intents)
+
+    def __str__() -> str:
+        return "Bot Class, please dont print this!!"
 
     async def on_command_error(self, ctx, error):
         rprint(f'[[bright_red]ERROR[/bright_red]]', error)
         await ctx.reply(f"{error}")
 
+    def is_registered(self) -> any:
+        async def predicate(ctx) -> bool:
+            user = ctx.author
+            try: 
+                load_json(SAVE_FILE, user.name, "user_data")
+                return True
+            except KeyError: 
+                return False
+        return commands.check(predicate)
+    
+    def is_blacklisted(self) -> any:
+        async def predicate_bl(ctx) -> bool:
+            user = ctx.author
+            BLACKLIST_ROLES = (1303267805411545098, 1349692227223289896)
+            role = discord.utils.find(lambda r: r.id in BLACKLIST_ROLES, ctx.message.guild.roles)
+
+            if role in user.roles:
+                await ctx.reply(f"You have been banned from the bot. \nIf you think this was a mistake, Please contact catamapp/lightningstormyt.")
+                return False
+            else:
+                return True
+        return commands.check(predicate_bl)
+    
+    def make_error_embed(self, user : str, error_code : int = 99, error_msg : str = None) -> discord.Embed:
+        time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+        #* add more later!!
+        errors = {1:"Command not found/doesn't exist.", 
+                2:"An input is missing, please try again.",
+                3:"An input is invalid/unprocessable.",
+                4:"You don't have permission to run this command.",
+                5:"Server Error. Either from API or Discord.",
+                6:"You must run `/setup` before running any commands. Its necessary for the bot to run.\nIf you already done ``/setup`` and this shows up, please ping catamapp or lightningstormyt ASAP.",
+                7:"Bot doesn't have permission to do the following action, ping catamapp or lightningstormyt ASAP.",
+                8:"Command didn't register properly, ping catamapp or lightningstormyt ASAP.",
+                9:"Intents not properly enabled, ping catamapp or lightningstormyt ASAP.",
+                10:"Connection with Discord failed, please try again later.",
+                11:"Connection with Discord failed, please try again later.", 
+                12:"Connection with Discord failed, please try again later.", 
+                13:"MongoDB raised a exception, ping catamapp ASAP.",
+                99:f"Unknown Error, please ping catamapp/lightningstormyt ASAP. (ERR ??)\nError Message: {error_msg}\n(IF THIS IS A KEY ERROR IGNORE.)"}
+
+        embedvar = discord.Embed(
+            title=f"Error {error_code:02d}",
+            description=f"{errors[error_code]}",
+            color=discord.Color.red(),
+        )
+        embedvar.set_footer(text=time_format)
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
+        if error_code != 99:
+            print(f"ERR {error_code:02d}: {time_format} by {user}")
+
+        return embedvar
+    
+    async def startup_progressbar(self):
+        with Progress(
+        "[progress.description]{task.description}",
+        SpinnerColumn(),
+        BarColumn(),
+        TimeElapsedColumn(),
+        ) as progress:
+            task = progress.add_task("[cyan]Starting up...[/cyan]", total=100)
+
+            for i in range(6):  
+                progress.update(task, advance=10)
+                time.sleep(0.16)
+
+            progress.update(task, completed=100)
+            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
+
+class UIInput_Events(discord.ui.Modal):
+    def __init__(self, title="Event Forum"):
+        self.host = discord.ui.TextInput(label="Host", placeholder="Enter host name...", required=True)
+        self.co_host = discord.ui.TextInput(label="Co-Host", placeholder="Enter co-host name...", required=True)
+        self.supervisor = discord.ui.TextInput(label="Supervisor", placeholder="Enter supervisor name...", required=True)
+        self.type = 1
+
+    async def on_submit(self, ctx):
+        time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+        event_channel = discord.utils.get(ctx.guild.text_channels, name="》events")
+        if not event_channel:
+            raise Exception("Channel not Found.")
+        
+        embedvar = discord.Embed(
+            title=EVENTS[self.type],
+            description=f"Host: {self.host.value}\nCo-host: {self.co_host.value}\nSupervisor: {self.supervisor.value}",
+            color=discord.Color.blue
+        )
+        embedvar.set_footer(text=time_format)
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
+
+        #await event_channel.send(file=logo, embed=embedvar)
+        await ctx.send(file=logo, embed=embedvar)
+        await ctx.send(f"Event {EVENTS[self.type]} Created.", ephemeral=True)
+    
 bot = Bot()
 client = discord.Client(intents=intents)
 
 #* Command Prompt 
-def command_prompt():
+async def command_prompt(ctx):
+    unix = int(datetime.datetime.now().timestamp())
     print("\n")
     while True:
         inp = str(input(f'{load_json("config.json", "run_bot_on", "settings")}-bot> '))
         if inp == "shutdown":
-            #TODO: make this thing not show a BUNCH of errors
-            exit(0)
+            await ctx.reply(f"Bot shutdown initiated by **COMMAND** at: <t:{unix}:F> (EVN 02)")
+            rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Bot shutdown initiated by you!!")
+            await bot.close()
 
 #* Humor Commands
 @bot.hybrid_command(with_app_command = True, brief = "uhh my head hurts")
-@is_blacklisted()
-@commands.has_any_role(*ROLES)
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
 async def wack(ctx):
     await ctx.reply("uhh my head hurts\n- wpco ai bot")
 
 @bot.hybrid_command(with_app_command=True, brief="embed testing.")
-@is_blacklisted()
+@bot.is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def test_embed(ctx):
     embedvar = discord.Embed(
@@ -160,26 +238,35 @@ async def test_embed(ctx):
     await ctx.reply(file=img, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True)
-@is_blacklisted()
+@bot.is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def wake_yassin(ctx):
     await ctx.reply("<@956699005960720474> wake up")
 
 @bot.hybrid_command(with_app_command = True, brief = "martin command")
-@is_blacklisted()
-@commands.has_any_role(*ROLES)
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
 async def shucks(ctx):
     await ctx.reply("https://cdn.discordapp.com/attachments/1207383289225281606/1328003148224139355/youtube-ugfghba-rBs.mp4?ex=67851ecf&is=6783cd4f&hm=ac276199166ddcee99252fd3d85f4ecbe4c24343104254e003cae82e8ee154ee&    ")
 
+#TODO: delete user messsage if sent with "$", else run command normally.
 @bot.hybrid_command(with_app_command = True, brief = "Make the bot say anything!")
-@is_blacklisted()
-@commands.has_any_role(*ROLES)
-async def say(ctx, *, message):
-    await ctx.reply(str(message))
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
+async def say(ctx, *, text):
+    if ctx.prefix:
+        await ctx.message.delete()
+    await ctx.send(str(text))
+
+@bot.hybrid_command(with_app_command = True, brief = "Classic RNG command.")
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
+async def roll(ctx, end_num: int, hide: bool = False):
+    await ctx.reply(f":game_die: Rolled Number: {random.randint(1, end_num)}", ephemeral=hide)
 
 #* Functional Commands
 @bot.hybrid_command(with_app_command = True, brief = "Checks bot ping.")
-@commands.has_any_role(*ROLES)
+@commands.has_any_role(*COMBINED_ROLES)
 async def ping(ctx):
     time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
     ping = bot.latency
@@ -193,33 +280,31 @@ async def ping(ctx):
     await ctx.reply(file=logo, embed=embedvar)
     
 @bot.hybrid_command(with_app_command = True, brief = "shutdowns the bot lmao")
-@is_registered()
-@is_blacklisted()
+@bot.is_registered()
+@bot.is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
-async def shutdown(ctx, password : str):
+async def shutdown(ctx, password: str):
     user = ctx.author
     unix = int(datetime.datetime.now().timestamp())
 
-    if password == load_json("save_wpco.json", user.name, "user_data"):
+    if password == load_json(SAVE_FILE, user.name, "user_data"):
         await ctx.reply(f"Bot shutdown initiated by **{user.name}** at: <t:{unix}:F> (EVN 01)")
+        rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Bot shutdown initiated by {user.name}.")
         await bot.close()
     else:
-        await ctx.reply("https://tenor.com/view/noperms-gif-27260516")
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name, 3))
 
-# TODO: fix this
-"""@bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
-@is_registered()
-@commands.has_any_role(*ROLES)
+# TODO: add 4 hour limit (suggested by tamago) / 7 hour limit (handbook)
+@bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
+@bot.is_registered()
+@bot.is_blacklisted()
+@commands.has_any_role(*WPCO_ROLE)
 async def self_deploy(ctx, status: str):
     global start, paused_at, total_paused_time, deployment_id, deployment_text, unix_start, g_user
     g_user = ctx.author
     user = ctx.author
     safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
 
-    if user.id in BLACKLIST_LIST:
-        await ctx.reply(f"You have been banned from the bot for: {BLACKLIST_LIST[user.id]} \nIf you think this was a mistake, Please contact catamapp/yassin1234.")
-    else: pass
-    
     if "start" not in globals():
         start = 0
     if "paused_at" not in globals():
@@ -230,20 +315,34 @@ async def self_deploy(ctx, status: str):
         deployment_id = 0
 
     if status.upper() == "S":
+        deployment_id += 1
         start = time.time()
         unix_start = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         deployment_text = datetime.datetime.now(datetime.timezone.utc).strftime("deployment_%d_%m_%Y")
-        deployment_id += 1
+        time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+        embedvar = discord.Embed(
+            title="Self-Deployment Started",
+            description=f"Operative: {user.name}\nStarted at: <t:{unix_start}:F>",
+            color=discord.Color.green(),)
+        embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+        embedvar.set_thumbnail(url="attachment://WPCO.png")
         edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", unix_start, "deployment_unix")
-        await ctx.reply(f"Started Self-Deployment for {user.name}. Started at: <t:{unix_start}:F>") 
+        await ctx.send(file=logo, embed=embedvar)
     elif status.upper() == "P":
         if paused_at == 0:
             paused_at = time.time()
             unix_pause = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(paused_at - start - total_paused_time))
-            await ctx.reply(f"Paused Self-Deployment for {user.name}. Paused at: <t:{unix_pause}:F>\nElapsed time: {elapsed_time}")
+            time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+            embedvar = discord.Embed(
+                title="Self-Deployment Paused",
+                description=f"Operative: {user.name}\nPaused at: <t:{unix_pause}:F>\nElapsed time: {elapsed_time}",
+                color=discord.Color.yellow(),)
+            embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+            embedvar.set_thumbnail(url="attachment://WPCO.png")
+            await ctx.send(file=logo, embed=embedvar)
         else:
-            await ctx.reply("The deployment is already paused!")
+            await ctx.reply("The deployment is already paused.", ephemeral=True)
     elif status.upper() == "UP":
         # wake up boi
         if paused_at != 0:
@@ -252,24 +351,37 @@ async def self_deploy(ctx, status: str):
             paused_at = 0
             unix_unpause = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(time.time() - start - total_paused_time))
-            await ctx.reply(f"Unpaused Self-Deployment for {user.name}. Unpaused at: <t:{unix_unpause}:F>\nElapsed time: {elapsed_time}")
+            time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+            embedvar = discord.Embed(
+                title="Self-Deployment Unpaused",
+                description=f"Operative: {user.name}\nUnpaused at: <t:{unix_unpause}:F>\nElapsed time: {elapsed_time}",
+                color=discord.Color.yellow(),)
+            embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+            embedvar.set_thumbnail(url="attachment://WPCO.png")
+            await ctx.send(file=logo, embed=embedvar)
         else:
-            await ctx.reply("The deployment is not paused!")
+            await ctx.reply("The deployment is not paused.", ephemeral=True)
     elif status.upper() == "E":
         end = time.time()
         try:
             total_time = end - start - total_paused_time
             unix_end = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             elapsed_time = datetime.timedelta(seconds=int(total_time))
-
+            time_format = datetime.datetime.strftime(datetime.datetime.now(datetime.timezone.utc), "Today at %I:%M %p UTC.")
+            embedvar = discord.Embed(
+                title="Self-Deployment Ended",
+                description=f"Operative: {user.name}\nEnded at: <t:{unix_end}:F>\nElapsed time: {elapsed_time}",
+                color=discord.Color.red(),)
+            embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
+            embedvar.set_thumbnail(url="attachment://WPCO.png")
             edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
-            await ctx.reply(f"Ended Self-Deployment for {user.name}. Ended at: <t:{unix_end}:F>\nTotal deployment time: {elapsed_time}")
+            await ctx.send(file=logo, embed=embedvar)
         except NameError:
-            await ctx.reply("You did not start a deployment yet.")"""
+            await ctx.reply("You did not start a deployment yet.", ephemeral=True)
         
 @bot.hybrid_command(with_app_command = True, brief = "Add points to a member.", help = "Add points to a member. (put a negative infront if you want to remove points)")
-@is_registered()
-@is_blacklisted()
+@bot.is_registered()
+@bot.is_blacklisted()
 @commands.has_any_role(*ADMIN_ROLES)
 async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     user = ctx.author
@@ -277,13 +389,13 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = datetime.datetime.strftime(time, "Today at %I:%M %p UTC.")
      
-    if password == load_json("save_wpco.json", user.name, "user_data"):
-        edit_json("save_wpco.json", f"{to_user.name}_pts", int(load_json("save_wpco.json", f"{to_user.name}_pts", "points"))+points, "points")
+    if password == load_json(SAVE_FILE, user.name, "user_data"):
+        edit_json(SAVE_FILE, f"{to_user.name}_pts", int(load_json(SAVE_FILE, f"{to_user.name}_pts", "points"))+points, "points")
 
     try:
         embedvar = discord.Embed(
 		title=f"Amount of added points for {to_user.name}:",
-		description=f"**{to_user.name}**'s total points: {load_json('save_wpco.json', f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
+		description=f"**{to_user.name}**'s total points: {load_json(SAVE_FILE, f'{to_user.name}_pts', 'points')}\nAdded by **{user.name}**",
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -293,17 +405,17 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
     await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Get the number of points a user has/you have.")
-@is_registered()
-@is_blacklisted()
-@commands.has_any_role(*ROLES)
-async def points(ctx, user : discord.Member):
+@bot.is_registered()
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
+async def points(ctx, user: discord.Member):
     embedvar = discord.Embed(title="Error 07",description=f"**{user.name}** has not registered yet. (ERR 07)\nPlease tell **{user.name}** to run command ``/setup``, then try again.",color=discord.Color.red(),)
     time = datetime.datetime.now(datetime.timezone.utc)
     time_format = time.strftime("Today at %I:%M %p UTC.")
     try:
         embedvar = discord.Embed(
 		title=f"Amount of points for {user.name}:",
-		description=f"Total points: {load_json('save_wpco.json', f'{user.name}_pts', 'points')}",
+		description=f"Total points: {load_json(SAVE_FILE, f'{user.name}_pts', 'points')}",
 		color=discord.Color.blue(),)
     except KeyError:
         print(f"ERR 07: {time_format} by {user.name}")
@@ -313,111 +425,185 @@ async def points(ctx, user : discord.Member):
     await ctx.reply(file=logo, embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)")
-@is_blacklisted()
-@commands.has_any_role(*ROLES)
-async def setup(ctx, password : str):
+@bot.is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
+async def setup(ctx, password: str):
     user = ctx.author
+    safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
+    selfdep_file = Path(f"./selfdep/{safe_name}.json")
+    user_count = load_json(SAVE_FILE, "user_count")
 
     if len(password) < 8:
-        await ctx.reply(":warning: You need a minimal of 8 characters for your password.")
+        await ctx.reply(":warning: You need a minimal of 8 characters for your password.", ephemeral=True)
     elif len(password) >= 8:
         try:
-            load_json("save_wpco.json", f"{user.name}", "user_data")
-            await ctx.reply(":warning: You have already done setup.")
+            load_json(SAVE_FILE, user.name, "user_data")
+            load_mongodb(user.name, "user_data")
+            await ctx.reply(":warning: You have already done setup.", ephemeral=True)
         except KeyError:
-            edit_json("save_wpco.json", f"{user.name}", password, "user_data")
-            edit_json("save_wpco.json", f"{user.name}_pts", 0, "points")
-            edit_json("save_wpco.json", f"{user.name}_rank", "EnO", "rank")
-            safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
-            with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: json.dump({"id" : user.id, "deployments": {}, "deployment_unix": {}}, outfile)
-            await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.")
+            edit_json(SAVE_FILE, user.name, password, "user_data")
+            edit_json(SAVE_FILE, f"{user.name}_pts", 0, "points")
+            if pymongo_installed:
+                try:
+                    edit_mongodb(user.name, password, "user_data", user_count)
+                    edit_mongodb(f"{user.name}_pts", 0, "points", user_count)
+                except Exception:
+                    await ctx.send(file=logo, embed=bot.make_error_embed(user.name,13))
+            if RUN_ON_SERVER == "wpco":
+                if selfdep_file.is_file():
+                    pass
+                else:
+                    template = {
+                        "id" : user.id, 
+                        "deployments": {}, 
+                        "deployment_unix": {}
+                    }
 
-@bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
-@is_registered()
-@is_blacklisted()
-@commands.has_any_role(*ADMIN_ROLES)
-async def promote(ctx, member : discord.Member, rank : str, password : str):
-    user = ctx.author
-    time = datetime.datetime.now(datetime.timezone.utc)
-    time_format = time.strftime("Today at %I:%M %p UTC.")
+                    with open(f"./selfdep/{safe_name}.json", mode="w", encoding="utf-8") as outfile: 
+                        json.dump(template, outfile)
+                    if pymongo_installed:
+                        try:
+                            db = MongoClient(MONGO_URL)
+                            save_dir = db[f"save-{RUN_ON_SERVER}"]
+                            save_file = save_dir["save-file"]
+                            save_file.insert_one(template)
+                        except Exception:
+                            await ctx.send(file=logo, embed=bot.make_error_embed(user.name,13))
+            user_count += 1
+            edit_json(SAVE_FILE, "user_count", user_count)        
+            await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.", ephemeral=True)
 
-    try:
-        load_json("save_wpco.json", f"{member.name}_rank", "rank")
-        if password == load_json("save_wpco.json", user.name, "user_data") and load_json("save_wpco.json", f"{user.name}_rank", "rank") != rank:
-            new_rank = RANKS[rank]
-            edit_json("save_wpco.json", f"{member.name}_rank", rank, "rank")      
-            await ctx.reply(f"{member.name}'s new rank: {new_rank}. Added by {user.name}")
-    except KeyError:
-        print(f"ERR 07: {time_format} by {user.name}")
-        await ctx.reply(f"**{member.name}** has not registered yet. (ERR 07)\nPlease tell **{member.name}** to run command ``/setup``, then try again.")
-
-@bot.hybrid_command(with_app_command = True, brief = "Promotes a user to a specific rank (Note: check description, $help promote)", description = "PLEASE USE SHORT TERMS. e.g.(Cpt, GeN, SnO, etc.), ONLY WORKS FOR WPCO RANKS ONLY")
-@commands.has_any_role(*ROLES)
-@is_registered()
-@is_blacklisted()
-async def check_password(ctx, password : str):
+@bot.hybrid_command(with_app_command = True, brief = "Checks your password. if you forgot it, dm catamapp")
+@commands.has_any_role(*COMBINED_ROLES)
+@bot.is_registered()
+@bot.is_blacklisted()
+async def check_password(ctx, password: str):
     #* thx plate
     user = ctx.author
 
-    if password == load_json("save_wpco.json", user.name, "user_data"):
-        await ctx.reply(":white_check_mark: Password is **correct**.")
+    if password == load_json(SAVE_FILE, user.name, "user_data"):
+        await ctx.reply(":white_check_mark: Password is **correct**.", ephemeral=True)
     else:
-        await ctx.reply(":x: Password is **incorrect**, try again.")
+        await ctx.reply(":x: Password is **incorrect**, try again.", ephemeral=True)
 
 @bot.hybrid_command(with_app_command = True, brief = "Basic Help Command")
-@commands.has_any_role(*ROLES)
-@is_blacklisted()
+@commands.has_any_role(*COMBINED_ROLES)
+@bot.is_blacklisted()
 async def help_s(ctx):
     await ctx.reply("""```Humor Commands:
   wack            ow my head hurts - ai bot??
   wake_yassin    
   say             Make the bot say anything....
   shucks
+  roll            Classic RNG command.
  
   Functional Commands:
   add_points      Add points to a member.
   check_password  Checks your current password
   help_s          Shows this message
   ping            Shows the bot's latency
-  points          Get the number of points a user has/you have.
-  promote         Promotes a user to a specific rank (Note: check description)      
+  points          Get the number of points a user has/you have.     
   self_deploy     Used for logging Self-Deployments (Note: check description)
   setup           Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)
   shutdown        Turns off the bot. (no need terminal killing)
 
 Type /help_s command for more info on a command. (coming soon)
 You can also type /help_s category for more info on a category. (coming soon)```""")
+    
+@bot.hybrid_command(with_app_command = True, brief = "Read the description for the event codes.", description="1: Deployment, 2: Basic Training, 3: Combat Training")
+@commands.has_any_role(*ADMIN_ROLES)
+@bot.is_blacklisted()
+@bot.is_registered()
+async def start_event(interaction: discord.Interaction, event: int):
+    uiinput = UIInput_Events()
+    uiinput.type = event
+    await interaction.response.send_modal(uiinput)
+
+@bot.hybrid_command(with_app_command = True, brief = "Adds a member to the faction. (WPCO ONLY.)")
+@commands.has_any_role(*ADMIN_ROLES)
+@bot.is_blacklisted()
+@bot.is_registered()
+async def add_member(ctx, user: discord.Member):
+    role = ctx.guild.get_role(WPCO_ROLE[0])
+    if role is None:
+        raise Exception("Role not found.")
+    
+    if role not in user.roles:
+        await user.add_roles(role, reason=f"Welcome to WPCO, {user.name}!")
+        await ctx.send(f"{user.name} added as a member, please welcome him.", ephemeral=True)
+    else:
+        await ctx.send(f"{user.name} has already been a member.", ephemeral=True)
 
 #* Events
 @bot.event
 async def on_ready():
-    time = datetime.datetime.now()
-    time_format = time.strftime('%Y-%m-%d %H:%M:%S') 
+    await bot.load_extension("jishaku")
+    #! asyncio stupid, fix this
+    await asyncio.to_thread(bot.startup_progressbar)
     await bot.tree.sync()
-    rprint(f'[grey]{time_format}[/grey]  [[light_green]SUCCESSFUL[/light_green]] Synced slash commands for all servers.')
-    rprint(f"[grey]{time_format}[/grey] [[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
-    rprint(f'[grey]{time_format}[/grey] [[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
+    rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Synced slash commands and loaded jishaku.')
+    rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
+    rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
     if not pymongo_installed:
-        rprint(f'[grey]{time_format}[/grey] [[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save_wpco.json and save_goc.json file.')
-    find_save()
-    #wait(1)
-    #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
-    #await bot_timer(timer_input)
-    rprint(f"[grey]{time_format}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Please ping catamapp/yassin1234 for bot maintenance/unhandled errors.")
-    if pymongo_installed:
+        rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_red]ERROR[/bright_red]] pymongo not found, using alternative save files.')
+        find_save("json")
+    else:
         try:
             client = MongoClient(MONGO_URL)
             client.admin.command('ping')  # Test MongoDB connection
-            rprint(f'[grey]{time_format}[/grey] [[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
+            find_save("mongodb")
+            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
         except Exception:
-            rprint(f'[grey]{time_format}[/grey] [[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
-    rprint(f'[grey]{time_format}[/grey] [[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
+            rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_red]ERROR[/bright_red]] MongoDB failed to connect.')
+    #wait(1)
+    #timer_input = int(input("Set automatic bot shutdown time in unix value (leave empty if manual shutdown): "))
+    #await bot_timer(timer_input)
+    rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Please ping catamapp/lightningstormyt for bot maintenance/unhandled errors.")
+    rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]COMPLETE[/light_green]] Bot has completed startup and now can be used.')
     try:
         await asyncio.to_thread(playsound.playsound, "sounds/beep.wav")
     except Exception as e:
         pass
     #TODO: fix this
-    #command_prompt()
+    #await asyncio.to_thread(command_prompt)
+
+@bot.event
+async def on_member_join(user):
+    if user.guild.id == 1207335443608113152:
+        roles = [1213355943690117140, 1207670421252476928, 1356518786068381796, 1213354335195365396]
+        for i in roles:
+            role = user.guild.get_role(i)
+            await user.add_roles(role, reason=f"{user.name} joined the server.")
+
+AUTOROLES_REACTIONS = {"Event": 1214531847959089173,
+                       "Poll": 1214531713602945044,
+                       "QuestionMark": 1214532032974295040,
+                       "scroll": 1214532211035078726,
+                       "Announcement": 1214051280897712168,
+                       "warning": 1358721097867989255}
+AUTOROLE_IDS = (881922017887154226, 751049879630905345)
+@bot.event
+async def on_raw_reaction_add(reaction):
+    guild = bot.get_guild(1207335443608113152)
+    local_emoji = reaction.emoji
+    user = guild.get_member(reaction.user_id)
+    if reaction.message_author_id in AUTOROLE_IDS and reaction.channel_id == 1217864965587861675:
+        print(f"User: {user.name}, Emoji: {local_emoji.name}")
+        user.add_roles(AUTOROLES_REACTIONS[local_emoji.name], reason="Added role via autoroles")
+
+@bot.event
+async def on_raw_reaction_remove(reaction):
+    #* manual fetching haiyaa (reaction.message_author_id doesn't work in this event!!!
+    guild = bot.get_guild(1207335443608113152)
+    local_emoji = reaction.emoji
+    user = guild.get_member(reaction.user_id)
+    channel = guild.get_channel(reaction.channel_id)
+    message = await channel.fetch_message(reaction.message_id)
+    author = message.author
+
+    if author.id in AUTOROLE_IDS and reaction.channel_id == 1217864965587861675:
+        print(f"User: {user.name}, Removed Emoji: {local_emoji.name}")
+        user.remove_roles(AUTOROLES_REACTIONS[local_emoji.name], reason="Removed role via autoroles")
 
 # TODO: fix this
 """@bot.event
@@ -446,55 +632,44 @@ async def on_command_error(ctx, error):
     time_format = time.strftime('%A, %d %B %Y, %I:%M %p') 
     if isinstance(error, commands.CommandNotFound):
         #! command not found
-        print(f"ERR 01: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(1))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,1))
     elif isinstance(error, commands.MissingRequiredArgument):
         #! no input
-        print(f"ERR 02: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(2))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,2))
     elif isinstance(error, commands.BadArgument):
         #! input not valid/wrong
-        print(f"ERR 03: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(3))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,3))
     elif isinstance(error, commands.MissingAnyRole):
         #! no perms?
-        print(f"ERR 04: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(4))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,4))
     elif isinstance(error, discord.HTTPException):
         #! discord.py error
-        print(f"ERR 05: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(5))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,5))
     elif isinstance(error, commands.CheckFailure):
         #! not registered
-        print(f"ERR 06: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(6))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,6))
     elif isinstance(error, discord.Forbidden):
         #! bot doesnt have perm to do an action
-        print(f"ERR 07: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(7))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,7))
     elif isinstance(error, commands.CommandRegistrationError):
         #! command registration failed
-        print(f"ERR 08: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(8))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,8))
     elif isinstance(error, discord.PrivilegedIntentsRequired):
         #! intents not properly enabled
-        print(f"ERR 09: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(9))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,9))
     elif isinstance(error, discord.ConnectionClosed):
         #! connection with discord closed
-        print(f"ERR 10: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(10))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,10))
     elif isinstance(error, discord.GatewayNotFound):
         #! connection with discord gateaway failed
-        print(f"ERR 11: {time_format} by {user.name}")
-        await ctx.send(file=logo, embed=make_error_embed(11))
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,11))
+    elif isinstance(error, discord.NotFound):
+        #! 404 not found
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,12))
     else:
         #! what happen?? (python error or smth)
-        rprint(f"[[bright_red]ERROR[/bright_red]] Unkown error: {error}\n{time_format}")
-        await ctx.send(file=logo, embed=make_error_embed(error_msg=error))
+        rprint(f"[[bright_red]ERROR[/bright_red]] Unknown error: {error}\n{time_format}")
+        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,error_msg=error))
 
-bot_pick = load_json("config.json", "run_bot_on", "settings")
-if bot_pick == "wpco":
-    bot.run(load_json("config.json", "wpco", "tokens"))
-elif bot_pick == "goc":
-    bot.run(load_json("config.json", "goc", "tokens"))
+if __name__ == "__main__":
+    bot.run(load_json("config.json", "token"))

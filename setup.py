@@ -1,6 +1,5 @@
 import subprocess, sys, os
-packages = ["discord.py", "rich", "playsound3", "pymongo"]
-print("Ignore the warning above\n")
+packages = ["discord.py", "rich", "playsound3", "pymongo", "jishaku"]
 
 def clear():
     if sys.platform.startswith(('win32')):
@@ -9,6 +8,7 @@ def clear():
         os.system('clear')
 
 clear()
+print("Setup\n")
 while True:
     database_pkgs_confirm = str(input("Would you like to install pymongo (MongoDB)? (y/n)\n> "))
     if database_pkgs_confirm.lower() == "y":
@@ -26,9 +26,13 @@ while True:
         print("Invalid Input.\n")
 
 print(end=None)
-subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"])
+subprocess.run([sys.executable, "-m", "pip", "install", "-U", "pip", "-q"], check=True)
 counter = 1
-for i in packages:
-    subprocess.run([sys.executable, "-m", "pip", "install", i,  "--quiet", "-U"])
-    print(f"[OK] {i} has been installed. (PKG-{counter:02d})")
+for package in packages:
+    subprocess.run([sys.executable, "-m", "pip", "install", package,  "-q", "-U"], check=True)
+    if counter >= 2:
+        from rich import print as rprint
+        rprint(f"[light_green][OK][/light_green] {package} has been installed. (PKG-{counter:02d})")
+    else:
+        print(f"[OK] {package} has been installed. (PKG-{counter:02d})")
     counter += 1
