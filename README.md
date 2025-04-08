@@ -12,6 +12,7 @@ What you need to run this is basically just the newest Python version, find [her
 - `rich` (local) - This adds colors and many other stuff you cant do in basic python.
 - `playsound3` (local) - This plays a sound to alert you that the bot is ready.
 - `pymongo` (database) - This is the alternative to the basic `json` save files (only use this if you have MongoDB set up).
+- `jishaku` (statistics) - Library for bot statistics
 
 > [!NOTE]
 > The packages with `(local)` tag have to be installed to prevent any errors in the file (i just used them to make your command line look better lol - catamapp)
