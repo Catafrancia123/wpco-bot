@@ -9,23 +9,6 @@ def clear():
 
 clear()
 print("Setup\n")
-while True:
-    database_pkgs_confirm = str(input("Would you like to install pymongo (MongoDB)? (y/n)\n> "))
-    if database_pkgs_confirm.lower() == "y":
-        os.makedirs("pymongo-quickstart", exist_ok=True)
-
-        if sys.platform.startswith("win32"):
-            os.system("type nul > pymongo-quickstart\\quickstart.py")
-        elif sys.platform.startswith(('linux', 'cygwin', 'darwin', 'freebsd')):
-            os.system("touch pymongo-quickstart/quickstart.py")
-        break
-    elif database_pkgs_confirm.lower() == "n":
-        packages.pop(packages.index("pymongo"))
-        break
-    else:
-        print("Invalid Input.\n")
-
-print(end=None)
 subprocess.run([sys.executable, "-m", "pip", "install", "-U", "pip", "-q"], check=True)
 counter = 1
 for package in packages:
