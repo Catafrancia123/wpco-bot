@@ -1,5 +1,5 @@
 # Specify the build provider
-providers = ["python"]
+providers = ["python", "pip"]
 
 # Set environment variables to optimize pip behavior
 [variables]
