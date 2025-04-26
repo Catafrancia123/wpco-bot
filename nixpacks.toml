@@ -1,0 +1,16 @@
+# Specify the build provider
+providers = ["python"]
+
+# Set environment variables to optimize pip behavior
+[variables]
+NODE_ENV = "live"
+PIP_DISABLE_PIP_VERSION_CHECK = "1"
+PIP_NO_CACHE_DIR = "1"
+
+# setup here
+[phases.setup]
+nixPkgs = ["..."]  # packages for nixpacks
+
+# startup phase
+[start]
+cmd = "python3 -m main.py"

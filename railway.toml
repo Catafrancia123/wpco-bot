@@ -1,0 +1,12 @@
+[variables]
+NODE_ENV = "live"
+
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r req.txt"
+
+[deploy]
+startCommand = "python3 -m main"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
