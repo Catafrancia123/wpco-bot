@@ -3,7 +3,7 @@ NODE_ENV = "live"
 
 [build]
 builder = "nixpacks"
-buildCommand = "pip install -r req.txt"
+buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 startCommand = "python3 -m main"
