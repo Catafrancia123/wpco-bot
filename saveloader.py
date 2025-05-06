@@ -2,7 +2,8 @@ import json, os, datetime
 from rich import print as rprint
 
 try:
-    from pymongo import MongoClient
+    from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+    from motor import MotorCollection
     pymongo_installed = True
 except ImportError:
     pymongo_installed = False
@@ -11,14 +12,22 @@ except ImportError:
 CHOOSE_SAVE = (load := json.load(open("config.json", "r", encoding="utf-8")))["settings"]["run_bot_on"]
 if pymongo_installed:
     MONGO_URL = (load := json.load(open("config.json", "r", encoding="utf-8")))["databaseToken"]
-    db = MongoClient(MONGO_URL)
+    db = AsyncIOMotorClient(MONGO_URL)
 SAVES = ("save_wpco.json")
 save_template = {
     "points" : {},
     "user_data" : {}
 }
 
-def find_save(method: str = "json"):
+async def find_save(method: str = "json"):
+    """Finds the save file in 2 different methods: MongoDB or JSON.
+
+    Parameters
+    ----------
+    method: str = "json"
+        The argument to choose the method (default = json)
+    """
+    
     save_found = False
     current_directory_files = os.listdir("./")
     if pymongo_installed and method.lower() == "mongodb":
@@ -50,76 +59,160 @@ def find_save(method: str = "json"):
         else:
             rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]FOUND[/light_green]] Save files exists and continuing session.')
 
-def load_json(path : str, to_load : str, library : str = None) -> any: #* loads stuff from json
-    with open(path, mode="r", encoding="utf-8") as read_file:
-        load = json.load(read_file)
+def load_json(path : str, to_load : str, object : str = None) -> any: #* loads stuff from json
+    """Loads data from a JSON file.
+    
+    Parameters
+    ----------
+    path: str
+        The path of the JSON file to access.
+    to_load: str
+        The data to load.
+    object: str = None
+        The object inside the JSON file to access to find to_load
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file wasn't found/doesn't exist.
+    KeyError
+        If the JSON library didn't find the object/key
+    """
+
+    if not os.path.exists(path):
+        raise FileNotFoundError("ERR 404: File not found.")
+    else:
+        with open(path, mode="r", encoding="utf-8") as read_file:
+            load = json.load(read_file)
+            
+        #* json throws a keyerror if the data is not found.
+        if object != None:
+            data = load[object][to_load]
+        elif object == None:
+            data = load[to_load]
+
+        read_file.close()
+        return data
+
+async def load_mongodb(file: AsyncIOMotorCollection, to_load: str, object: str = None, index: int = 1) -> any: #* online db integration (yippee!!!)
+    """Loads data in a MongoDB collection.
+    
+    Parameters
+    ----------
+    file: AsyncIOMotorCollection
+        The collection to access.
+    to_load: str
+        The name of the data to load.
+    object: str = None
+        The object inside the collection to access to find to_load
+    index: int = 1
+        The document index to access (defaults to 1)
         
-    #* json throws a keyerror if the data is not found.
-    if library != None:
-        data = load[library][to_load]
-    elif library == None:
-        data = load[to_load]
-
-    read_file.close()
-    return data
-
-def load_mongodb(to_load: str, object: str = None, index: int = 1) -> any: #* online db integration (yippee!!!)
+    Raises
+    ------
+    ImportError
+        If you didn't install pymongo and ran this command.
+    KeyError
+        If the object/key wasn't found."""
+    
     if not pymongo_installed:
         raise ImportError("pymongo not found, you haven't installed it you goober.")
     else:
-        file = db[f"save-{CHOOSE_SAVE}"]["save-file"]
         if object != None:
             filt = {"_id": index, f"{object}.{to_load}": {"$exists": True}}
-            result = file.find_one(filt)
+            result = await file.find_one(filt)
             
             if result == None:
-                raise KeyError("Object/Key not found.")
+                raise KeyError("Object/Key wasn't found.")
             else:
                 return result[object][to_load]
         elif object == None:
             filt = {"_id": index, to_load: {"$exists": True}}
-            result = file.find_one(filt)
+            result = await file.find_one(filt)
 
             if result == None:
-                raise KeyError("Key not found.")
+                raise KeyError("Key wasn't found.")
             else:
                 return result[to_load]
             
-def edit_json(path : str, to_change : str, value, library : str = None): #* Can edit/add
-    with open(path, mode="r", encoding="utf-8") as read_file:
-        data = json.load(read_file)
+def edit_json(path : str, to_change : str, value: any, object : str = None): #* Can edit/add
+    """Edits data in a JSON file.
+    
+    Parameters
+    ----------
+    path: str
+        The path of the JSON file to access.
+    to_change: str:
+        The name of the data to change.
+    value: any
+        The value to change the specified data
+    object: str = None
+        The object inside the JSON file to access to find to_change
         
-    if library != None:
-        data[library][to_change] = value
-    elif library == None:
-        data[to_change] = value
-    read_file.close()
+    Raises
+    ------
+    FileNotFoundError
+        If the file wasn't found/doesn't exist.
+    KeyError
+        If the JSON library didn't find the object/key"""
+    if not os.path.exists(path):
+        raise FileNotFoundError("ERR 404: File not found.")
+    else:
+        with open(path, mode="r", encoding="utf-8") as read_file:
+            data = json.load(read_file)
+            
+        if object != None:
+            data[object][to_change] = value
+        elif object == None:
+            data[to_change] = value
+        read_file.close()
 
-    with open(path, "w") as outfile:
-        json.dump(data, outfile)
-    outfile.close()
+        with open(path, "w") as outfile:
+            json.dump(data, outfile)
+        outfile.close()
 
-def edit_mongodb(to_edit: str, value, object: str = None, index: int = 1):
+async def edit_mongodb(file: AsyncIOMotorCollection, to_edit: str, value: any, object: str = None, index: int = 1):
+    """Edits data in a MongoDB collection.
+    
+    Parameters
+    ----------
+    file: AsyncIOMotorCollection
+        The collection to access.
+    to_edit: str
+        The name of the data to change
+    value: any
+        The value to change the data
+    object: str = None
+        The object inside the collection to access to find to_load
+    index: int = 1
+        The document index to access (defaults to 1)
+        
+    Raises
+    ------
+    ImportError
+        If you didn't install pymongo and ran this command.
+    KeyError
+        If the object/key wasn't found."""
+    
     if not pymongo_installed:
         raise ImportError("pymongo not found, you haven't installed it you goober.")
     else:
-        file = db[f"save-{CHOOSE_SAVE}"]["save-file"]
         if object != None:
             filt = {"_id": index, object: {"$exists": True}}
             update = {"$set": {f"{object}.{to_edit}": value}}
             #* check if the field exists
-            check_exist = file.find_one(filt)
+            check_exist = await file.find_one(filt)
             if check_exist == None:
                 #* create new field
-                file.update_one({"_id": index}, {"$set": {object: {}}})
+                await file.update_one({"_id": index}, {"$set": {object: {}}})
         elif object == None:
             filt = {}
             update = {"$set": {to_edit: value}}
-        file.update_one(filt, update)
+        await file.update_one(filt, update)
 
 #! Search algorithms (may come in handy later on). DONT DELETE THIS.
 
-def binary_search(array : list, target):
+def binary_search(array : list, target) -> any:
     low = 0
     high = len(array)
 

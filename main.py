@@ -16,14 +16,14 @@ from saveloader import edit_json, load_json, load_mongodb, edit_mongodb, find_sa
 pymongo_installed = True
 #? Do YOU have pymongo?
 try:
-    from pymongo import MongoClient
+    from motor.motor_asyncio import AsyncIOMotorClient
 except ImportError:
     pymongo_installed = False
 
 #! no touchy!!
 if pymongo_installed:
     MONGO_URL = load_json("config.json", "databaseToken")
-logo = discord.File("images/WPCO.png", filename="WPCO.png")
+    db = AsyncIOMotorClient(MONGO_URL)
 
 #* pyinstaller hotfix
 def resource_path(relative_path):
@@ -84,7 +84,7 @@ WPCO_ROLE = [1207498264644157521]
 GOC_ROLE = [989415158549995540]
 COMBINED_ROLES = WPCO_ROLE + GOC_ROLE
 ADMIN_ROLES = (1345327248265449502, 1207383065270419528, 1224066316990812272, 1179524589592784996, 1349692227223289896, 1244197639331774556, 1351470675013013574)
-deployment_id = 0
+deployment_id = bot_reset = 0
 RANKS = {"EnO" : "Enlisted Operative", "O" : "Operative", "SnO" : "Senior Operative", "ElO" : "Elite Operative", "SpC" : "Specialist", "LnC" : "Lance Corporal", # Low ranking
          "SgT" : "Sergeant", "SsT" : "Staff Sergeant", "SfC" : "Sergeant First Class", "OfC" : "Officer", "SnO" : "Senior Officer", "VnO" : "Veteran Officer", "CfO" : "Chief Officer", # Medium ranking
          "2LT" : "2nd Lieutenant", "1LT" : "1st Lieutenant", "CpT" : "Captain", "MaJ" : "Major", "C" : "Colonel", "M" : "Marshal", "MG" : "Major General", "GeN" : "General"} # High ranking
@@ -95,7 +95,10 @@ class Bot(commands.Bot):
     def __init__(self):
         #* I HAVE THE POWER OF EVERYTHING!  
         global intents
-        intents = discord.Intents.all()
+        intents = discord.Intents.default()
+        intents.message_content = True #! see message content
+        intents.members = True #! see members
+        intents.reactions = True #! see reactions
 
         super().__init__(command_prefix = "$", intents = intents)
 
@@ -196,12 +199,11 @@ class UIInput_Events(discord.ui.Modal):
         embedvar.set_footer(text=time_format)
         embedvar.set_thumbnail(url="attachment://WPCO.png")
 
-        #await event_channel.send(file=logo, embed=embedvar)
-        await ctx.send(file=logo, embed=embedvar)
+        #await event_channel.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
         await ctx.send(f"Event {EVENTS[self.type]} Created.", ephemeral=True)
     
 bot = Bot()
-client = discord.Client(intents=intents)
 
 #* Command Prompt 
 async def command_prompt(ctx):
@@ -277,7 +279,7 @@ async def ping(ctx):
     embedvar.set_footer(text=time_format)
     embedvar.set_thumbnail(url="attachment://WPCO.png")
 
-    await ctx.reply(file=logo, embed=embedvar)
+    await ctx.reply(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
     
 @bot.hybrid_command(with_app_command = True, brief = "shutdowns the bot lmao")
 @bot.is_registered()
@@ -292,7 +294,7 @@ async def shutdown(ctx, password: str):
         rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[bright_yellow]WARNING[/bright_yellow]] Bot shutdown initiated by {user.name}.")
         await bot.close()
     else:
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name, 3))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name, 3))
 
 # TODO: add 4 hour limit (suggested by tamago) / 7 hour limit (handbook)
 @bot.hybrid_command(with_app_command = True, brief = "Used for logging Self-Deployments (USE THE CODES IN THE DESCRIPTION)", description = "S = start, P = pause, UP = unpause,  E = end")
@@ -327,7 +329,7 @@ async def self_deploy(ctx, status: str):
         embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
         embedvar.set_thumbnail(url="attachment://WPCO.png")
         edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_unix_start", unix_start, "deployment_unix")
-        await ctx.send(file=logo, embed=embedvar)
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
     elif status.upper() == "P":
         if paused_at == 0:
             paused_at = time.time()
@@ -340,7 +342,7 @@ async def self_deploy(ctx, status: str):
                 color=discord.Color.yellow(),)
             embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
             embedvar.set_thumbnail(url="attachment://WPCO.png")
-            await ctx.send(file=logo, embed=embedvar)
+            await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
         else:
             await ctx.reply("The deployment is already paused.", ephemeral=True)
     elif status.upper() == "UP":
@@ -358,7 +360,7 @@ async def self_deploy(ctx, status: str):
                 color=discord.Color.yellow(),)
             embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
             embedvar.set_thumbnail(url="attachment://WPCO.png")
-            await ctx.send(file=logo, embed=embedvar)
+            await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
         else:
             await ctx.reply("The deployment is not paused.", ephemeral=True)
     elif status.upper() == "E":
@@ -375,7 +377,7 @@ async def self_deploy(ctx, status: str):
             embedvar.set_footer(text=f"Shift ID: {deployment_text}_{deployment_id} | {time_format}")
             embedvar.set_thumbnail(url="attachment://WPCO.png")
             edit_json(f"./selfdep/{safe_name}.json", f"{deployment_text}_{deployment_id}_time_seconds", int(total_time), "deployments")
-            await ctx.send(file=logo, embed=embedvar)
+            await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
         except NameError:
             await ctx.reply("You did not start a deployment yet.", ephemeral=True)
         
@@ -402,7 +404,7 @@ async def add_points(ctx, points: int, to_user: discord.Member, password: str):
         
     embedvar.set_footer(text=time_format)
     embedvar.set_thumbnail(url="attachment://WPCO.png")
-    await ctx.reply(file=logo, embed=embedvar)
+    await ctx.reply(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Get the number of points a user has/you have.")
 @bot.is_registered()
@@ -422,12 +424,13 @@ async def points(ctx, user: discord.Member):
     
     embedvar.set_footer(text=time_format)
     embedvar.set_thumbnail(url="attachment://WPCO.png")
-    await ctx.reply(file=logo, embed=embedvar)
+    await ctx.reply(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=embedvar)
 
 @bot.hybrid_command(with_app_command = True, brief = "Setup in order to run the bot. (RUN THIS COMMAND USING /setup.)")
 @bot.is_blacklisted()
 @commands.has_any_role(*COMBINED_ROLES)
 async def setup(ctx, password: str):
+    collection = db[f"save_{RUN_ON_SERVER}"]["save_file"]
     user = ctx.author
     safe_name = "".join(c for c in user.name if c.isalnum() or c in "-_")
     selfdep_file = Path(f"./selfdep/{safe_name}.json")
@@ -438,17 +441,17 @@ async def setup(ctx, password: str):
     elif len(password) >= 8:
         try:
             load_json(SAVE_FILE, user.name, "user_data")
-            load_mongodb(user.name, "user_data")
+            load_mongodb(collection, user.name, index=user_count)
             await ctx.reply(":warning: You have already done setup.", ephemeral=True)
         except KeyError:
             edit_json(SAVE_FILE, user.name, password, "user_data")
             edit_json(SAVE_FILE, f"{user.name}_pts", 0, "points")
             if pymongo_installed:
                 try:
-                    edit_mongodb(user.name, password, "user_data", user_count)
-                    edit_mongodb(f"{user.name}_pts", 0, "points", user_count)
+                    edit_mongodb(collection, user.name, password, index=user_count)
+                    edit_mongodb(collection, f"{user.name}_pts", 0, index=user_count)
                 except Exception:
-                    await ctx.send(file=logo, embed=bot.make_error_embed(user.name,13))
+                    await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,13))
             if RUN_ON_SERVER == "wpco":
                 if selfdep_file.is_file():
                     pass
@@ -463,12 +466,11 @@ async def setup(ctx, password: str):
                         json.dump(template, outfile)
                     if pymongo_installed:
                         try:
-                            db = MongoClient(MONGO_URL)
                             save_dir = db[f"save-{RUN_ON_SERVER}"]
-                            save_file = save_dir["save-file"]
+                            save_file = save_dir[f"{user.name}_dep"]
                             save_file.insert_one(template)
                         except Exception:
-                            await ctx.send(file=logo, embed=bot.make_error_embed(user.name,13))
+                            await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,13))
             user_count += 1
             edit_json(SAVE_FILE, "user_count", user_count)        
             await ctx.reply(":white_check_mark: Setup complete. You may use the bot now.", ephemeral=True)
@@ -534,13 +536,23 @@ async def add_member(ctx, user: discord.Member):
     else:
         await ctx.send(f"{user.name} has already been a member.", ephemeral=True)
 
+@bot.hybrid_command(with_app_command = True, brief = "Syncs the bot...")
+@commands.has_any_role(*ADMIN_ROLES)
+@bot.is_blacklisted()
+@bot.is_registered()
+async def sync(ctx):
+    await bot.setup_hook()
+    await ctx.send(":white_check_mark: Bot successfully synced.")
+
 #* Events
 @bot.event
 async def on_ready():
-    await bot.load_extension("jishaku")
+    global bot_reset
+    if bot_reset == 0:
+        await bot.load_extension("jishaku")
+    bot_reset += 1
     #! asyncio stupid, fix this
     await asyncio.to_thread(bot.startup_progressbar)
-    await bot.tree.sync()
     rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Synced slash commands and loaded jishaku.')
     rprint(f"[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]VERSION[/light_green]] Discord.py version [bright_yellow]{discord.__version__}[/bright_yellow], Bot version [bright_yellow]{BOTVER}[/bright_yellow]")
     rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] Logged in as [blue]{bot.user}[/blue] (ID: [#cccccc]{bot.user.id}[/#cccccc])')
@@ -549,8 +561,8 @@ async def on_ready():
         find_save("json")
     else:
         try:
-            client = MongoClient(MONGO_URL)
-            client.admin.command('ping')  # Test MongoDB connection
+            client = AsyncIOMotorClient(MONGO_URL)
+            await client.admin.command('ping')  # Test MongoDB connection
             find_save("mongodb")
             rprint(f'[grey]{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/grey] [[light_green]SUCCESSFUL[/light_green]] MongoDB successfully connected.')
         except Exception:
@@ -632,44 +644,44 @@ async def on_command_error(ctx, error):
     time_format = time.strftime('%A, %d %B %Y, %I:%M %p') 
     if isinstance(error, commands.CommandNotFound):
         #! command not found
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,1))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,1))
     elif isinstance(error, commands.MissingRequiredArgument):
         #! no input
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,2))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,2))
     elif isinstance(error, commands.BadArgument):
         #! input not valid/wrong
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,3))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,3))
     elif isinstance(error, commands.MissingAnyRole):
         #! no perms?
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,4))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,4))
     elif isinstance(error, discord.HTTPException):
         #! discord.py error
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,5))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,5))
     elif isinstance(error, commands.CheckFailure):
         #! not registered
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,6))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,6))
     elif isinstance(error, discord.Forbidden):
-        #! bot doesnt have perm to do an action
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,7))
+        #! bot doesnt have perms to do an action
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,7))
     elif isinstance(error, commands.CommandRegistrationError):
         #! command registration failed
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,8))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,8))
     elif isinstance(error, discord.PrivilegedIntentsRequired):
         #! intents not properly enabled
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,9))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,9))
     elif isinstance(error, discord.ConnectionClosed):
         #! connection with discord closed
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,10))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,10))
     elif isinstance(error, discord.GatewayNotFound):
         #! connection with discord gateaway failed
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,11))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,11))
     elif isinstance(error, discord.NotFound):
         #! 404 not found
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,12))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,12))
     else:
         #! what happen?? (python error or smth)
         rprint(f"[[bright_red]ERROR[/bright_red]] Unknown error: {error}\n{time_format}")
-        await ctx.send(file=logo, embed=bot.make_error_embed(user.name,error_msg=error))
+        await ctx.send(file=discord.File("images/WPCO.png", filename="WPCO.png"), embed=bot.make_error_embed(user.name,error_msg=error))
 
 if __name__ == "__main__":
     bot.run(load_json("config.json", "token"))
